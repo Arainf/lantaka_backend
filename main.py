@@ -5,10 +5,10 @@ from marshmallow import Schema, fields, validate, ValidationError
 from flask_marshmallow import Marshmallow  # Correct import
 from werkzeug.utils import secure_filename  # For secure image uploads
 from flask_cors import CORS
-from model import db, Account, Room, RoomType, Venue, VenueReservation
+from model import db, Account, Room, RoomType, Venue, VenueReservation, RoomReservation, GuestDetails
 from datetime import datetime
 from defaultValues import rooms, roomTypes, venues
-from dummydata import venue_reservations, guests, accounts
+from dummydata import venue_reservations, guests, accounts, room_reservations
 
 app = Flask(__name__)
 CORS(app)
@@ -234,87 +234,147 @@ def get_room_data():
     else:
         return jsonify({"error": "No room data found"}), 404
     
-
-@app.route('/api/rooms/<string:room_id>', methods=['GET'])
-def get_room_details(room_id):
-    room = Room.query.filter_by(room_id=room_id).first()
+@app.route('/api/details/rooms/<string:item_id>', methods=['GET'])
+def get_room_details(item_id):
+    currentDate = request.args.get('date')
+    room = Room.query.get(item_id)
     if room:
-        room_type = RoomType.query.filter_by(room_type_id=room.room_type_id).first()
-        # guest = GuestDetails.query.filter_by(room_id=room.room_id).first()  # Assuming you have a relation with guests
+        return get_room_details_response(room, currentDate)
+    return jsonify({'error': 'Room not found'}), 404
 
-        # Constructing the image URL
-        image_url = f"http://localhost:5000/api/roomImage/{room_id}" if room_type and room_type.room_type_img else None
-        
-        room_data = {
-            'room_name': room.room_name,
-            'guest_name': "guest",  # f"{guest.guest_fName} {guest.guest_lName}" if guest else None,
-            'check_in': '2024-05-30',  # Replace with actual data
-            'check_out': '2024-05-30',  # Replace with actual data
-            'image_url': image_url  # Adding the image URL to the response
-        }
-        return jsonify(room_data), 200
-    else:
-        return jsonify({'error': 'Room not found'}), 404
-
-
-@app.route('/api/roomImage/<string:room_id>', methods=['GET'])
-def serve_room_image(room_id):
-    room = Room.query.filter_by(room_id=room_id).first()
-    if room:
-        room_type = RoomType.query.filter_by(room_type_id=room.room_type_id).first()
-        if room_type and room_type.room_type_img:
-            return Response(room_type.room_type_img, mimetype='image/webp')  # Adjust the mimetype accordingly
-        else:
-            return jsonify({'error': 'Image not found'}), 404
-    else:
-        return jsonify({'error': 'Room not found'}), 404
-    
-
-@app.route('/api/venues/<string:venue_id>', methods=['GET'])
-def get_venue_details(venue_id):
-    venue = Venue.query.filter_by(venue_id=venue_id).first()
+@app.route('/api/details/venues/<string:item_id>', methods=['GET'])
+def get_venue_details(item_id):
+    currentDate = request.args.get('date')
+    venue = Venue.query.get(item_id)
     if venue:
-        # guest = GuestDetails.query.filter_by(room_id=room.room_id).first()  # Assuming you have a relation with guests
+        return get_venue_details_response(venue, currentDate)
+    return jsonify({'error': 'Venue not found'}), 404
 
-        # Constructing the image URL
-        image_url = f"http://localhost:5000/api/venueImage/{venue_id}"
-        
-        venue_data = {
-            'venue_name': venue.venue_name,
-            'guest_name': "guest",  # f"{guest.guest_fName} {guest.guest_lName}" if guest else None,
-            'check_in': '2024-05-30',  # Replace with actual data
-            'check_out': '2024-05-30',  # Replace with actual data
-            'image_url': image_url  # Adding the image URL to the response
-        }
-        return jsonify(venue_data), 200
+
+def get_room_details_response(room , currentDate):
+    current_booking = RoomReservation.query.filter_by(room_id=room.room_id).filter(
+        (RoomReservation.room_reservation_booking_date_start <= currentDate) & 
+        (RoomReservation.room_reservation_booking_date_end >= currentDate)).first()
+    if current_booking:
+        print(current_booking)
+        return jsonify({
+            'date': currentDate,
+            'name': room.room_name,
+            'type': 'room',
+            'guest_name': f"{current_booking.guest.guest_fName} {current_booking.guest.guest_lName}" if current_booking else None,
+            'check_in': current_booking.room_reservation_booking_date_start.isoformat() if current_booking else None,
+            'check_out': current_booking.room_reservation_booking_date_end.isoformat() if current_booking else None,
+            'image_url': f"http://localhost:5000/api/image/{room.room_id}?type=room"
+        })
     else:
-        return jsonify({'error': 'Room not found'}), 404
+         return jsonify({
+            'date': currentDate,
+            'name': room.room_name,
+            'type': 'room',
+            'guest_name': "No Reservation",
+            'check_in': "No Reservation",
+            'check_out': "No Reservation",
+            'image_url': f"http://localhost:5000/api/image/{room.room_id}?type=room"
+        })
 
-@app.route('/api/venueImage/<string:venue_id>', methods=['GET'])
-def serve_venue_image(venue_id):
-    venue = Venue.query.filter_by(venue_id=venue_id).first()
-    if venue:
-        if venue.venue_img:
-            return Response(venue.venue_img, mimetype='image/webp')  # Adjust the mimetype accordingly
-        else:
-            return jsonify({'error': 'Image not found'}), 404
+def get_venue_details_response(venue, currentDate):
+    current_booking = VenueReservation.query.filter_by(venue_id=venue.venue_id).filter(
+        (VenueReservation.venue_reservation_booking_date_start <= currentDate) & 
+        (VenueReservation.venue_reservation_booking_date_end >= currentDate)).first()
+    if current_booking:
+        return jsonify({
+            'name': venue.venue_name,
+            'type': 'venue',
+            'employee': f"{current_booking.account.account_fName} {current_booking.account.account_lName}",
+            'guest_name': f"{current_booking.guest.guest_fName} {current_booking.guest.guest_lName}" if current_booking else None,
+            'check_in': current_booking.venue_reservation_booking_date_start.isoformat() if current_booking else None,
+            'check_out': current_booking.venue_reservation_booking_date_end.isoformat() if current_booking else None,
+            'image_url': f"http://localhost:5000/api/image/{venue.venue_id}?type=venue"
+        })
     else:
-        return jsonify({'error': 'Room not found'}), 404
-    
+         return jsonify({
+            'date': currentDate,
+            'name': venue.venue_name,
+            'type': 'venue',
+            'guest_name': "No Reservation",
+            'check_in': "No Reservation",
+            'check_out': "No Reservation",
+            'image_url': f"http://localhost:5000/api/image/{venue.venue_id}?type=venue"
+        })
 
-@app.route('/api/availabilityVenue/<string:date>', methods=['GET'])
-def get_availability_venue(date):
-    available_venue = VenueReservation.query.filter_by(venue_reservation_booking_date=date).all()
-    if available_venue:
-        venues_data = []
-        for venue in available_venue:
-            venues_data.append({
-                'id':venue.venue_id,
-                'status': venue.venue_reservation_status
+
+@app.route('/api/image/<string:item_id>', methods=['GET'])
+def serve_image(item_id):
+    item_type = request.args.get('type')
+    if item_type == 'room':
+        room = Room.query.get(item_id)
+        if room and room.room_type and room.room_type.room_type_img:
+            return Response(room.room_type.room_type_img, mimetype='image/webp')
+    elif item_type == 'venue':
+        venue = Venue.query.get(item_id)
+        if venue and venue.venue_img:
+            return Response(venue.venue_img, mimetype='image/webp')
+    return jsonify({'error': 'Image not found'}), 404
+
+
+
+from flask import jsonify
+from datetime import datetime
+
+@app.route('/api/reservationStatus/<string:date>', methods=['GET'])
+def get_reservation_status(date):
+    try:
+        # Convert string date to datetime object
+        date_obj = datetime.strptime(date, '%Y-%m-%d').date()
+
+        # Query venue reservations
+        venue_reservations = VenueReservation.query.filter(
+            VenueReservation.venue_reservation_booking_date_start <= date_obj,
+            VenueReservation.venue_reservation_booking_date_end >= date_obj
+        ).all()
+
+        # Query room reservations
+        room_reservations = RoomReservation.query.filter(
+            RoomReservation.room_reservation_booking_date_start <= date_obj,
+            RoomReservation.room_reservation_booking_date_end >= date_obj
+        ).all()
+
+        # Combine and format results
+        reservation_data = []
+        for reserve in venue_reservations:
+            reservation_data.append({
+                'id': reserve.venue_id,
+                'status': reserve.venue_reservation_status,
+                'type': 'venue'
             })
-        return jsonify(venues_data), 200
-    else:
-        return jsonify({"error": "No venues available on the given date"}), 404
+        for reserve in room_reservations:
+            reservation_data.append({
+                'id': reserve.room_id,
+                'status': reserve.room_reservation_status,
+                'type': 'room'
+            })
+
+        # If no reservations are found, set all statuses to normal
+        if not reservation_data:
+            # Create a list of all venues and rooms from your defined lists
+            all_venues_and_rooms = [
+                {'id': venue.venue_id, 'type': 'venue'} for venue in venues
+            ] + [
+                {'id': room.room_id, 'type': 'room'} for room in rooms
+            ]
+
+            for item in all_venues_and_rooms:
+                reservation_data.append({
+                    'id': item['id'],
+                    'status': 'normal',
+                    'type': item['type']
+                })
+            return jsonify(reservation_data), 200
+
+        return jsonify(reservation_data), 200
+
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
 
 
 
@@ -354,6 +414,7 @@ if __name__ == '__main__':
             db.session.add_all(accounts)
             db.session.add_all(guests)
             db.session.add_all(venue_reservations)
+            db.session.add_all(room_reservations)
             db.session.commit()
             print("Venues inserted successfully!")
         else:

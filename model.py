@@ -20,7 +20,8 @@ class Account(db.Model):
     account_status = db.Column(db.Enum("active", "inactive"))
     account_last_login = db.Column(db.String(100))
 
-    def __init__(self, account_role, account_fName, account_lName, account_img, account_username, account_email, account_password, account_phone, account_dob, account_gender, account_status, account_last_login):
+    def __init__(self, account_id, account_role, account_fName, account_lName, account_img, account_username, account_email, account_password, account_phone, account_dob, account_gender, account_status, account_last_login):
+        self.account_id = account_id
         self.account_role = account_role
         self.account_fName = account_fName
         self.account_lName = account_lName
@@ -49,7 +50,8 @@ class GuestDetails(db.Model):
     guest_address = db.Column(db.String(100), nullable=False)
     guest_client = db.Column(db.String(100), nullable=False)
 
-    def __init__(self, guest_fName, guest_lName, guest_pop, guest_email, guest_phone, guest_gender, guest_messenger_account, guest_poi, guest_designation, guest_address, guest_client):
+    def __init__(self, guest_id, guest_fName, guest_lName, guest_pop, guest_email, guest_phone, guest_gender, guest_messenger_account, guest_poi, guest_designation, guest_address, guest_client):
+        self.guest_id = guest_id
         self.guest_fName = guest_fName
         self.guest_lName = guest_lName
         self.guest_pop = guest_pop
@@ -118,20 +120,45 @@ class VenueReservation(db.Model):
     guest = db.relationship('GuestDetails', backref='venue_reservations')
     account_id = db.Column(db.Integer, db.ForeignKey('account.account_id'))
     account = db.relationship('Account', backref='venue_reservations')
-    venue_reservation_booking_date = db.Column(db.Date, nullable=False)
+    venue_reservation_booking_date_start = db.Column(db.Date, nullable=False)
+    venue_reservation_booking_date_end = db.Column(db.Date, nullable=False)
     venue_reservation_check_in_time = db.Column(db.Time, nullable=False)
     venue_reservation_check_out_time = db.Column(db.Time, nullable=False)
     venue_reservation_status = db.Column(db.Enum("pending", "completed", "cancelled"), nullable=False)
 
-    def __init__(self, venue_reservation,venue_id, guest_id, account_id, venue_reservation_booking_date, venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status):
-        self.venue_reservation_id = venue_reservation
+    def __init__(self, venue_reservation_id,venue_id, guest_id, account_id, venue_reservation_booking_date_start, venue_reservation_booking_date_end,venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status):
+        self.venue_reservation_id = venue_reservation_id
         self.venue_id = venue_id
         self.guest_id = guest_id
         self.account_id = account_id
-        self.venue_reservation_booking_date = venue_reservation_booking_date
+        self.venue_reservation_booking_date_start = venue_reservation_booking_date_start
+        self.venue_reservation_booking_date_end = venue_reservation_booking_date_end
         self.venue_reservation_check_in_time = venue_reservation_check_in_time
         self.venue_reservation_check_out_time = venue_reservation_check_out_time
         self .venue_reservation_status = venue_reservation_status
 
+class RoomReservation(db.Model):
+    room_reservation_id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.String(50), db.ForeignKey('room.room_id'))
+    room = db.relationship('Room', backref='room_reservations')
+    guest_id = db.Column(db.Integer, db.ForeignKey('guest_details.guest_id'))
+    guest = db.relationship('GuestDetails', backref='room_reservations')
+    account_id = db.Column(db.Integer, db.ForeignKey('account.account_id'))
+    account = db.relationship('Account', backref='room_reservations')
+    room_reservation_booking_date_start = db.Column(db.Date, nullable=False)
+    room_reservation_booking_date_end = db.Column(db.Date, nullable=False)
+    room_reservation_check_in_time = db.Column(db.Time, nullable=False)
+    room_reservation_check_out_time = db.Column(db.Time, nullable=False)
+    room_reservation_status = db.Column(db.Enum("pending", "completed", "cancelled"), nullable=False)
 
+    def __init__(self, room_reservation_id, room_id, guest_id, account_id, room_reservation_booking_date_start, room_reservation_booking_date_end, room_reservation_check_in_time, room_reservation_check_out_time, room_reservation_status):
+        self.room_reservation_id = room_reservation_id
+        self.room_id = room_id
+        self.guest_id = guest_id
+        self.account_id = account_id
+        self.room_reservation_booking_date_start = room_reservation_booking_date_start
+        self.room_reservation_booking_date_end = room_reservation_booking_date_end
+        self.room_reservation_check_in_time = room_reservation_check_in_time
+        self.room_reservation_check_out_time = room_reservation_check_out_time
+        self.room_reservation_status = room_reservation_status
         
