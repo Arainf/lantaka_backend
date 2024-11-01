@@ -162,3 +162,22 @@ class RoomReservation(db.Model):
         self.room_reservation_check_out_time = room_reservation_check_out_time
         self.room_reservation_status = room_reservation_status
         
+class Notification(db.Model):
+    notification_id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.account_id'))
+    guest_id = db.Column(db.Integer, db.ForeignKey('guest_details.guest_id'))
+    venue_reservation_id = db.Column(db.Integer, db.ForeignKey('venue_reservation.venue_reservation_id'))
+    room_reservation_id = db.Column(db.Integer, db.ForeignKey('room_reservation.room_reservation_id'))
+    account = db.relationship('Account', backref='notifications')
+    guest = db.relationship('GuestDetails', backref='notifications')
+    venue_reservation = db.relationship('VenueReservation', backref='notifications')
+    room_reservation = db.relationship('RoomReservation', backref='notifications')
+
+    def __init__(self, notification_id, account_id, guest_id, venue_reservation_id, room_reservation_id):
+
+        self.notification_id = notification_id
+        self.account_id = account_id
+        self.guest_id = guest_id
+        self.venue_reservation_id =  venue_reservation_id 
+        self.room_reservation_id = room_reservation_id
+         
