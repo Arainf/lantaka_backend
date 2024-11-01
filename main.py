@@ -317,6 +317,127 @@ def serve_image(item_id):
     return jsonify({'error': 'Image not found'}), 404
 
 
+@app.route('/api/reservationCalendar', methods=['GET'])
+def get_reservation_calendar():
+    reservationsVenue = VenueReservation.query.all()
+    reservationsRoom = RoomReservation.query.all()
+    if reservationsVenue or reservationsRoom:
+        reservations = []
+
+        for venue in reservationsVenue:
+            reservations.append({
+                'reservationid': venue.venue_reservation_id,
+                'id': venue.venue_id,
+                'type':'venue',
+                'dateStart': venue.venue_reservation_booking_date_start.isoformat(),
+                'dateEnd': venue.venue_reservation_booking_date_end.isoformat(),
+                'status': venue.venue_reservation_status,
+                'guests': f"{venue.guest.guest_fName} {venue.guest.guest_lName}",
+                'employee': f"{venue.account.account_fName} {venue.account.account_lName}",
+                'checkIn': venue.venue_reservation_check_in_time.isoformat(),
+                'checkOut': venue.venue_reservation_check_out_time.isoformat(),
+            })
+
+        for room in reservationsRoom:
+            reservations.append({
+                'reservationid': room.room_reservation_id,
+                'id': room.room_id,
+                'type':'room',
+                'dateStart': room.room_reservation_booking_date_start.isoformat(),
+                'dateEnd': room.room_reservation_booking_date_end.isoformat(),
+                'status': room.room_reservation_status,
+                'guests': f"{room.guest.guest_fName} {room.guest.guest_lName}",
+                'employee': f"{room.account.account_fName} {room.account.account_lName}",
+                'checkIn': room.room_reservation_check_in_time.isoformat(),
+                'checkOut': room.room_reservation_check_out_time.isoformat(),
+            })
+
+        return jsonify(reservations), 200
+    else:
+        return jsonify({"error": "No reservations found"}), 404
+    
+
+@app.route('/api/available/<string:dateStart>/<string:dateEnd>', methods=['GET'])
+def get_availability(dateStart, dateEnd):
+    # Convert string dates to date objects
+    date_start = datetime.strptime(dateStart, '%Y-%m-%d').date()
+    date_end = datetime.strptime(dateEnd, '%Y-%m-%d').date()
+
+    # Initialize a dictionary to hold available room counts by room type
+    availability = {}
+
+    # Get all room types
+    room_types = RoomType.query.all()
+
+    for room_type in room_types:
+        # Get the total number of rooms of this room type
+        total_rooms = Room.query.filter_by(room_type_id=room_type.room_type_id).count()
+
+        # Get the count of reserved rooms for this room type that overlap with the provided dates
+        reserved = RoomReservation.query.filter(
+            RoomReservation.room_reservation_booking_date_start < date_end,
+            RoomReservation.room_reservation_booking_date_end > date_start,
+            RoomReservation.room.has(room_type_id=room_type.room_type_id)  # Check only for this room type
+        ).count()
+
+        # Calculate available rooms
+        available = total_rooms - reserved
+
+        # Store the available count in the dictionary
+        availability[room_type.room_type_name] = available
+
+    return jsonify(availability), 200
+
+
+
+    
+@app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
+def update_reservation_status(event_id):
+    # Retrieve query parameters
+    reservation_id = request.args.get('id')
+    new_status = request.args.get('status')
+    event_type = request.args.get('type')
+
+    # Print values for debugging
+    print(f"Reservation ID: {reservation_id}, Status: {new_status}, Event Type: {event_type}")
+
+    # Check required fields
+    if not reservation_id or not new_status or not event_type:
+        return jsonify({'error': 'Missing required fields: id, status, or type'}), 400
+
+    # Normalize case for event_type
+    event_type = event_type.lower()
+
+    try:
+        # Update based on type
+        if event_type == 'venue':
+            reservation = VenueReservation.query.filter_by(venue_reservation_id=event_id).first()
+            if reservation:
+                reservation.venue_reservation_status = new_status
+                db.session.commit()
+                return jsonify({'message': 'Venue reservation status updated successfully'}), 200
+            else:
+                return jsonify({'error': 'Venue reservation not found'}), 404
+
+        elif event_type == 'room':
+            reservation = RoomReservation.query.filter_by(room_reservation_id=event_id).first()
+            if reservation:
+                reservation.room_reservation_status = new_status
+                db.session.commit()
+                return jsonify({'message': 'Room reservation status updated successfully'}), 200
+            else:
+                return jsonify({'error': 'Room reservation not found'}), 404
+
+        else:
+            return jsonify({'error': 'Invalid reservation type'}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating reservation: {e}")
+        return jsonify({'error': 'An error occurred while updating the reservation'}), 500
+
+
+
 @app.route('/api/reservationStatus/<string:date>', methods=['GET'])
 def get_reservation_status(date):
     try:
@@ -372,50 +493,7 @@ def get_reservation_status(date):
     except ValueError:
         return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
 
-@app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
-def update_reservation_status(event_id):
-    # Retrieve query parameters
-    reservation_id = request.args.get('id')
-    new_status = request.args.get('status')
-    event_type = request.args.get('type')
 
-    # Print values for debugging
-    print(f"Reservation ID: {reservation_id}, Status: {new_status}, Event Type: {event_type}")
-
-    # Check required fields
-    if not reservation_id or not new_status or not event_type:
-        return jsonify({'error': 'Missing required fields: id, status, or type'}), 400
-
-    # Normalize case for event_type
-    event_type = event_type.lower()
-
-    try:
-        # Update based on type
-        if event_type == 'venue':
-            reservation = VenueReservation.query.filter_by(venue_reservation_id=event_id).first()
-            if reservation:
-                reservation.venue_reservation_status = new_status
-                db.session.commit()
-                return jsonify({'message': 'Venue reservation status updated successfully'}), 200
-            else:
-                return jsonify({'error': 'Venue reservation not found'}), 404
-
-        elif event_type == 'room':
-            reservation = RoomReservation.query.filter_by(room_reservation_id=event_id).first()
-            if reservation:
-                reservation.room_reservation_status = new_status
-                db.session.commit()
-                return jsonify({'message': 'Room reservation status updated successfully'}), 200
-            else:
-                return jsonify({'error': 'Room reservation not found'}), 404
-
-        else:
-            return jsonify({'error': 'Invalid reservation type'}), 400
-
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error updating reservation: {e}")
-        return jsonify({'error': 'An error occurred while updating the reservation'}), 500
 
 # Ensure the application context is active before creating tables
 if __name__ == '__main__':
