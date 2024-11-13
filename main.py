@@ -847,7 +847,50 @@ def get_reservation_status(date):
     except ValueError:
         return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
 
+@app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
+def update_reservation_status(event_id):
+    # Retrieve query parameters
+    reservation_id = request.args.get('id')
+    new_status = request.args.get('status')
+    event_type = request.args.get('type')
 
+    # Print values for debugging
+    print(f"Reservation ID: {reservation_id}, Status: {new_status}, Event Type: {event_type}")
+
+    # Check required fields
+    if not reservation_id or not new_status or not event_type:
+        return jsonify({'error': 'Missing required fields: id, status, or type'}), 400
+
+    # Normalize case for event_type
+    event_type = event_type.lower()
+
+    try:
+        # Update based on type
+        if event_type == 'venue':
+            reservation = VenueReservation.query.filter_by(venue_reservation_id=event_id).first()
+            if reservation:
+                reservation.venue_reservation_status = new_status
+                db.session.commit()
+                return jsonify({'message': 'Venue reservation status updated successfully'}), 200
+            else:
+                return jsonify({'error': 'Venue reservation not found'}), 404
+
+        elif event_type == 'room':
+            reservation = RoomReservation.query.filter_by(room_reservation_id=event_id).first()
+            if reservation:
+                reservation.room_reservation_status = new_status
+                db.session.commit()
+                return jsonify({'message': 'Room reservation status updated successfully'}), 200
+            else:
+                return jsonify({'error': 'Room reservation not found'}), 404
+
+        else:
+            return jsonify({'error': 'Invalid reservation type'}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating reservation: {e}")
+        return jsonify({'error': 'An error occurred while updating the reservation'}), 500
 
 # Ensure the application context is active before creating tables
 if __name__ == '__main__':

@@ -8,7 +8,11 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
+<<<<<<< HEAD
 set VIRTUAL_ENV=D:\RainierBackend\lantaka_backend\venv
+=======
+set VIRTUAL_ENV=D:\Lantaka Reservation\lantaka_backend\venv
+>>>>>>> 996a32637c89514c9b2e275200460772d1665462
 
 if not defined PROMPT set PROMPT=$P$G
 
