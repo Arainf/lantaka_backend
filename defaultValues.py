@@ -17,9 +17,9 @@ breezaHalll_img = load_image("DefaultAssets/VenuePictures/BreezaHall.webp")
 oldTalisayBar_img = load_image("DefaultAssets/VenuePictures/OldTalisayBar.webp")
 
 roomTypes = [
-    RoomType(room_type_name="Double Bed", room_type_description="A room with two beds for double occupancy.", room_type_price="1300", room_type_capacity="2", room_type_img=doubleBed_img), 
-    RoomType(room_type_name="Triple Bed", room_type_description="A spacious room with three beds for triple occupancy.", room_type_price="1500", room_type_capacity="3", room_type_img=tripleBed_img),
-    RoomType(room_type_name="Matrimonial Bed", room_type_description="A cozy room with a matrimonial bed for couples.", room_type_price="1600", room_type_capacity="2", room_type_img=matrimonial_img)
+    RoomType(room_type_name="Double Bed", room_type_description="A room with two beds for double occupancy.", room_type_price_internal="1300", room_type_price_external="1600", room_type_capacity="2", room_type_img=doubleBed_img), 
+    RoomType(room_type_name="Triple Bed", room_type_description="A spacious room with three beds for triple occupancy.", room_type_price_internal="1500", room_type_price_external="1800" , room_type_capacity="3", room_type_img=tripleBed_img),
+    RoomType(room_type_name="Matrimonial Bed", room_type_description="A cozy room with a matrimonial bed for couples.", room_type_price_internal="1600", room_type_price_external="1600", room_type_capacity="2", room_type_img=matrimonial_img)
 ]
 
 
@@ -75,11 +75,11 @@ rooms = [
 ]
 
 venues = [
-    Venue(venue_id="DiningHall", venue_name="Dinning Hall", venue_description="A spacious venue for hosting events.", venue_status="pending", venue_pricing="1000", venue_capacity="500", venue_img=capizHall_img),
-    Venue(venue_id="Gazebo", venue_name="Gazebo / Sea area", venue_description="A spacious venue for hosting events.", venue_status="pending", venue_pricing="1000", venue_capacity="500", venue_img=gazebo_img),
-    Venue(venue_id="BreezaHall", venue_name="Breeza Hall", venue_description="A spacious venue for hosting events.", venue_status="pending", venue_pricing="1000", venue_capacity="500", venue_img=breezaHalll_img),
-    Venue(venue_id="CapizHall", venue_name="Capiz Hall", venue_description="A spacious venue for hosting events.", venue_status="pending", venue_pricing="1000", venue_capacity="500", venue_img=capizHall_img),
-    Venue(venue_id="OldTalisayBar", venue_name="Old Talisay Bar", venue_description="A spacious venue for hosting events.", venue_status="pending", venue_pricing="1000", venue_capacity="500", venue_img=oldTalisayBar_img)
+    Venue(venue_id="DiningHall", venue_name="Dinning Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=capizHall_img),
+    Venue(venue_id="Gazebo", venue_name="Gazebo / Sea area", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=gazebo_img),
+    Venue(venue_id="BreezaHall", venue_name="Breeza Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=breezaHalll_img),
+    Venue(venue_id="CapizHall", venue_name="Capiz Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=capizHall_img),
+    Venue(venue_id="OldTalisayBar", venue_name="Old Talisay Bar", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=oldTalisayBar_img)
 ]
 
 
