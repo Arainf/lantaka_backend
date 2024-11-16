@@ -75,11 +75,11 @@ rooms = [
 ]
 
 venues = [
-    Venue(venue_id="DiningHall", venue_name="Dinning Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=capizHall_img),
-    Venue(venue_id="Gazebo", venue_name="Gazebo / Sea area", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=gazebo_img),
-    Venue(venue_id="BreezaHall", venue_name="Breeza Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=breezaHalll_img),
-    Venue(venue_id="CapizHall", venue_name="Capiz Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=capizHall_img),
-    Venue(venue_id="OldTalisayBar", venue_name="Old Talisay Bar", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing="1000", venue_capacity="500", venue_img=oldTalisayBar_img)
+    Venue(venue_id="DiningHall", venue_name="Dinning Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing_internal="1000",venue_pricing_external="1000", venue_capacity="500", venue_img=capizHall_img),
+    Venue(venue_id="Gazebo", venue_name="Gazebo / Sea area", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing_internal="1000",venue_pricing_external="1000", venue_capacity="500", venue_img=gazebo_img),
+    Venue(venue_id="BreezaHall", venue_name="Breeza Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing_internal="1000",venue_pricing_external="1000", venue_capacity="500", venue_img=breezaHalll_img),
+    Venue(venue_id="CapizHall", venue_name="Capiz Hall", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing_internal="1000",venue_pricing_external="1000", venue_capacity="500", venue_img=capizHall_img),
+    Venue(venue_id="OldTalisayBar", venue_name="Old Talisay Bar", venue_description="A spacious venue for hosting events.", venue_status="ready", venue_pricing_internal="1000",venue_pricing_external="1000", venue_capacity="500", venue_img=oldTalisayBar_img)
 ]
 
 

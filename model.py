@@ -1,8 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
-import json
 import datetime
 
-db = SQLAlchemy()  # Don't pass app here yet
+db = SQLAlchemy()
 
 class Account(db.Model):
     account_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -33,7 +32,6 @@ class Account(db.Model):
         self.account_status = account_status
         self.account_last_login = account_last_login
 
-
 class GuestDetails(db.Model):
     guest_id = db.Column(db.Integer, primary_key=True)
     guest_type = db.Column(db.Enum("internal", "external"), nullable=False)
@@ -63,8 +61,6 @@ class GuestDetails(db.Model):
         self.guest_address = guest_address
         self.guest_client = guest_client
 
-
-
 class Room(db.Model):
     room_id = db.Column(db.String(50), primary_key=True)
     room_type_id = db.Column(db.Integer, db.ForeignKey('room_type.room_type_id'))
@@ -79,16 +75,14 @@ class Room(db.Model):
         self.room_status = room_status
 
     def to_dict(self, is_available=False):
-        room_isready = self.room_status == "ready"  # Check if room is ready
+        room_isready = self.room_status == "ready"
         return {
             "room_id": self.room_id,
             "room_type_id": self.room_type_id,
             "room_name": self.room_name,
             "room_status": is_available,
-            "room_isready": room_isready,  # Add room_isready field
+            "room_isready": room_isready,
         }
-
-
 
 class RoomType(db.Model):
     room_type_id = db.Column(db.Integer, primary_key=True)
@@ -97,8 +91,7 @@ class RoomType(db.Model):
     room_type_price_internal = db.Column(db.Float, nullable=False)
     room_type_price_external = db.Column(db.Float, nullable=False)
     room_type_capacity = db.Column(db.Integer, nullable=False)
-    room_type_img = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)  # Use LONGBLOB for very large images
-
+    room_type_img = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
 
     def __init__(self, room_type_name, room_type_description, room_type_price_internal, room_type_price_external, room_type_capacity, room_type_img):
         self.room_type_name = room_type_name
@@ -109,20 +102,22 @@ class RoomType(db.Model):
         self.room_type_img = room_type_img
 
 class Venue(db.Model):
-    venue_id = db.Column(db.String(50), primary_key = True)
+    venue_id = db.Column(db.String(50), primary_key=True)
     venue_name = db.Column(db.String(100))
     venue_description = db.Column(db.String(1000), nullable=False)
     venue_status = db.Column(db.Enum("ready", "onMaintenance", "onCleaning"), nullable=False)
-    venue_pricing = db.Column(db.Float, nullable=False)
+    venue_pricing_internal = db.Column(db.Float, nullable=False)
+    venue_pricing_external = db.Column(db.Float, nullable=False)
     venue_capacity = db.Column(db.Integer, nullable=False)
-    venue_img = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)  # Added nullable=False for consistency
+    venue_img = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
 
-    def __init__(self, venue_id, venue_name, venue_description, venue_status, venue_pricing, venue_capacity, venue_img):
+    def __init__(self, venue_id, venue_name, venue_description, venue_status, venue_pricing_internal, venue_pricing_external, venue_capacity, venue_img):
         self.venue_id = venue_id
         self.venue_name = venue_name
         self.venue_description = venue_description
         self.venue_status = venue_status
-        self.venue_pricing = venue_pricing
+        self.venue_pricing_internal = venue_pricing_internal
+        self.venue_pricing_external = venue_pricing_external
         self.venue_capacity = venue_capacity
         self.venue_img = venue_img
 
@@ -131,11 +126,9 @@ class Venue(db.Model):
         return {
             "room_id": self.venue_id,
             "room_name": self.venue_name,
-            "room_status": is_available, 
-            "room_isready": room_isready,  # Add room_isready field # Include venue_status field here
-            # Add other fields as needed
+            "room_status": is_available,
+            "room_isready": room_isready,
         }
-    
 
 class VenueReservation(db.Model):
     venue_reservation_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -151,10 +144,11 @@ class VenueReservation(db.Model):
     venue_reservation_booking_date_end = db.Column(db.Date, nullable=False)
     venue_reservation_check_in_time = db.Column(db.Time, nullable=False)
     venue_reservation_check_out_time = db.Column(db.Time, nullable=False)
-    venue_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse" , "cancelled" , "doneReservation"), nullable=False)
+    venue_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "doneReservation"), nullable=False)
     venue_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
+    venue_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
 
-    def __init__(self, venue_id, guest_id, account_id, receipt_id, venue_reservation_booking_date_start, venue_reservation_booking_date_end,venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status, venue_reservation_additional_notes):
+    def __init__(self, venue_id, guest_id, account_id, receipt_id, venue_reservation_booking_date_start, venue_reservation_booking_date_end, venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status, venue_reservation_additional_notes, venue_reservation_pop):
         self.venue_id = venue_id
         self.guest_id = guest_id
         self.account_id = account_id
@@ -163,8 +157,9 @@ class VenueReservation(db.Model):
         self.venue_reservation_booking_date_end = venue_reservation_booking_date_end
         self.venue_reservation_check_in_time = venue_reservation_check_in_time
         self.venue_reservation_check_out_time = venue_reservation_check_out_time
-        self .venue_reservation_status = venue_reservation_status
+        self.venue_reservation_status = venue_reservation_status
         self.venue_reservation_additional_notes = venue_reservation_additional_notes
+        self.venue_reservation_pop = venue_reservation_pop
 
 class RoomReservation(db.Model):
     room_reservation_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -180,10 +175,11 @@ class RoomReservation(db.Model):
     room_reservation_booking_date_end = db.Column(db.Date, nullable=False)
     room_reservation_check_in_time = db.Column(db.Time, nullable=False)
     room_reservation_check_out_time = db.Column(db.Time, nullable=False)
-    room_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse" , "cancelled" , "done" , "onCleaning"), nullable=False)
+    room_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "done", "onCleaning"), nullable=False)
     room_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
+    room_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
 
-    def __init__(self, room_id, guest_id, account_id, receipt_id, room_reservation_booking_date_start, room_reservation_booking_date_end, room_reservation_check_in_time, room_reservation_check_out_time, room_reservation_status, room_reservation_additional_notes):
+    def __init__(self, room_id, guest_id, account_id, receipt_id, room_reservation_booking_date_start, room_reservation_booking_date_end, room_reservation_check_in_time, room_reservation_check_out_time, room_reservation_status, room_reservation_additional_notes, room_reservation_pop):
         self.room_id = room_id
         self.guest_id = guest_id
         self.account_id = account_id
@@ -194,30 +190,8 @@ class RoomReservation(db.Model):
         self.room_reservation_check_out_time = room_reservation_check_out_time
         self.room_reservation_status = room_reservation_status
         self.room_reservation_additional_notes = room_reservation_additional_notes
-        
-class Receipt(db.Model):
-    receipt_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    guest_id = db.Column(db.Integer, db.ForeignKey('guest_details.guest_id'))
-    guest = db.relationship('GuestDetails', backref='receipts')
-    receipt_date = db.Column(db.Date, nullable=False)
-    receipt_initial_total = db.Column(db.Float, nullable=False)  # Initial total before discount
-    receipt_total_amount = db.Column(db.Float, nullable=False)  # Final amount after discount
-    receipt_notes = db.Column(db.Text, nullable=True)  # Any additional notes
-    
-    # Store discounts as JSON string
-    receipt_discounts = db.Column(db.Text, nullable=True)
+        self.room_reservation_pop = room_reservation_pop
 
-    def __init__(self, guest_id, receipt_date, receipt_initial_total, receipt_total_amount, receipt_discounts=None, receipt_notes=None):
-        self.guest_id = guest_id
-        self.receipt_date = receipt_date
-        self.receipt_initial_total = receipt_initial_total
-        self.receipt_total_amount = receipt_total_amount
-        self.receipt_discounts = json.dumps(receipt_discounts) if receipt_discounts else None
-        self.receipt_notes = receipt_notes
-
-    def get_discounts(self):
-        # Retrieve discounts as a Python list
-        return json.loads(self.receipt_discounts) if self.receipt_discounts else []
 class Notification(db.Model):
     notification_id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.account_id'))
@@ -230,10 +204,62 @@ class Notification(db.Model):
     room_reservation = db.relationship('RoomReservation', backref='notifications')
 
     def __init__(self, notification_id, account_id, guest_id, venue_reservation_id, room_reservation_id):
-
         self.notification_id = notification_id
         self.account_id = account_id
         self.guest_id = guest_id
-        self.venue_reservation_id =  venue_reservation_id 
+        self.venue_reservation_id = venue_reservation_id
         self.room_reservation_id = room_reservation_id
-         
+
+class Discounts(db.Model):
+    discount_id = db.Column(db.Integer, primary_key=True)
+    discount_name = db.Column(db.String(100), nullable=False)
+    discount_percentage = db.Column(db.Float, nullable=False)
+
+    # Relationship to receipts
+    receipts = db.relationship("Receipt", secondary="receipt_discount", back_populates="discounts")
+
+    def __init__(self, discount_name, discount_percentage):
+        self.discount_name = discount_name
+        self.discount_percentage = discount_percentage
+
+class AdditionalFees(db.Model):
+    additional_fee_id = db.Column(db.Integer, primary_key=True)
+    additional_fee_name = db.Column(db.String(100), nullable=False)
+    additional_fee_amount = db.Column(db.Float, nullable=False)
+
+    # Relationship to receipts
+    receipts = db.relationship("Receipt", secondary="receipt_additional_fee", back_populates="additional_fees")
+
+    def __init__(self, additional_fee_name, additional_fee_amount):
+        self.additional_fee_name = additional_fee_name
+        self.additional_fee_amount = additional_fee_amount
+
+# Junction table for the many-to-many relationship between Receipt and Discounts
+receipt_discount = db.Table('receipt_discount',
+    db.Column('receipt_id', db.Integer, db.ForeignKey('receipt.receipt_id'), primary_key=True),
+    db.Column('discount_id', db.Integer, db.ForeignKey('discounts.discount_id'), primary_key=True)
+)
+
+# Junction table for the many-to-many relationship between Receipt and AdditionalFees
+receipt_additional_fee = db.Table('receipt_additional_fee',
+    db.Column('receipt_id', db.Integer, db.ForeignKey('receipt.receipt_id'), primary_key=True),
+    db.Column('additional_fee_id', db.Integer, db.ForeignKey('additional_fees.additional_fee_id'), primary_key=True)
+)
+
+class Receipt(db.Model):
+    receipt_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    guest_id = db.Column(db.Integer, db.ForeignKey('guest_details.guest_id'))
+    guest = db.relationship('GuestDetails', backref='receipts')
+    receipt_date = db.Column(db.Date, nullable=False)
+    receipt_initial_total = db.Column(db.Float, nullable=False)
+    receipt_total_amount = db.Column(db.Float, nullable=False)
+
+    # Relationships with discounts and additional fees
+    discounts = db.relationship("Discounts", secondary="receipt_discount", back_populates="receipts")
+    additional_fees = db.relationship("AdditionalFees", secondary="receipt_additional_fee", back_populates="receipts")
+
+    def __init__(self, guest_id, receipt_date, receipt_initial_total, receipt_total_amount):
+        self.guest_id = guest_id
+        self.receipt_date = receipt_date
+        self.receipt_initial_total = receipt_initial_total
+        self.receipt_total_amount = receipt_total_amount

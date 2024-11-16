@@ -1,3 +1,17 @@
+# ================================================ #
+#                                                  #
+#    Welcome to the Lantaka Project Backend!       #
+#                                                  # 
+#   Powered by Flask and Python, with MySQL        #
+#   handling data storage for seamless room        #
+#   reservations and event management.             #
+#                                                  #
+#   Enjoy exploring the backend, and feel free     #
+#   to reach out with any questions or feedback!   #
+#                                                  #
+# ================================================ #
+
+# ================================================ #
 import base64
 import bcrypt
 import subprocess
@@ -12,8 +26,16 @@ from flask_cors import CORS
 from model import db, Account, Room, RoomType, Venue, VenueReservation, RoomReservation, GuestDetails, Receipt
 from datetime import datetime, time, date
 from defaultValues import rooms, roomTypes, venues
-from sqlalchemy import or_
-
+from collections import defaultdict
+from definedFunctions.apiAccountModel import get_accounts
+from definedFunctions.apiGuestModel import get_guests
+from definedFunctions.apiDiscounts import get_discounts, insert_discounts
+from definedFunctions.apiAdditionalFees import get_AdditionalFees, insert_AdditionalFees
+from definedFunctions.apiSubmitReservation import submit_reservation
+from definedFunctions.apiReservations import get_Reservations
+from definedFunctions.apiPrice import get_Price
+from definedFunctions.apiDeleteGroupedReservation import delete_reservations
+# ================================================ #
 
 app = Flask(__name__)
 CORS(app)
@@ -110,113 +132,6 @@ def register():
         # Return validation errors from Marshmallow
         return jsonify({"errors": err.messages}), 400
 
-@app.route('/api/submitReservation', methods=['POST'])
-def submit_reservation():
-    try:
-        data = request.json  # Get JSON data from the request
-
-        # Check if the account_id exists in the Account table
-        account_id = data['accountId']
-        account = db.session.query(Account).filter_by(account_id=account_id).first()
-        if not account:
-            return jsonify({'error': 'Invalid account ID'}), 400
-
-        # Check if the guest already exists
-        existing_guest = db.session.query(GuestDetails).filter_by(
-            guest_email=data['email'],
-            guest_fName=data['firstName'],
-            guest_lName=data['lastName']
-        ).first()
-
-        if existing_guest:
-            new_guest = existing_guest
-        else:
-            # Create a new GuestDetails entry
-            new_guest = GuestDetails(
-                guest_type=data['clientType'],
-                guest_fName=data['firstName'],
-                guest_lName=data['lastName'],
-                guest_email=data['email'],
-                guest_phone=data['phone'],
-                guest_gender=data['gender'],
-                guest_messenger_account=data['messengerAccount'],
-                guest_designation=data['designation'],
-                guest_address=data['address'],
-                guest_client=data['clientAlias']
-            )
-            db.session.add(new_guest)
-            db.session.flush()
-
-        # Parse room and venue dates as before
-        date_start_Room = datetime.fromisoformat(data['dateRangeRoom']['from'].replace('Z', '')) if data.get('dateRangeRoom', {}).get('from') else None
-        date_end_Room = datetime.fromisoformat(data['dateRangeRoom']['to'].replace('Z', '')) if data.get('dateRangeRoom', {}).get('to') else None
-        check_in_time = time(13, 0)
-        date_start_Venue = datetime.fromisoformat(data.get('dateRangeVenue', {}).get('from', '').replace('Z', '')) if data.get('dateRangeVenue', {}).get('from') else None
-        date_end_Venue = datetime.fromisoformat(data.get('dateRangeVenue', {}).get('to', '').replace('Z', '')) if data.get('dateRangeVenue', {}).get('to') else None
-        check_out_time = time(12, 0)
-
-        # Extract additional notes and prices for the receipt
-        add_notes = data.get('addNotes', '')
-        initial_total_price = data.get('initialTotalPrice', 0.0)
-        total_price = data.get('totalPrice', 0.0)
-
-        # Convert discount list to JSON string
-        discount_data = json.dumps(data.get('discount', []))
-
-        # Create the Receipt entry
-        new_receipt = Receipt(
-            guest_id=new_guest.guest_id,
-            receipt_date=date.today(),
-            receipt_initial_total=initial_total_price,
-            receipt_discounts=discount_data,  # Store discounts as JSON string
-            receipt_total_amount=total_price,
-            receipt_notes=add_notes
-        )
-        db.session.add(new_receipt)
-        db.session.flush()  # Get the receipt_id from the database
-
-        # Create RoomReservation entries if there are valid room dates
-        if date_start_Room and date_end_Room:
-            for room_id in data['selectedReservationRooms'].get('double', []):
-                new_reservation = RoomReservation(
-                    room_id=room_id,    
-                    guest_id=new_guest.guest_id,
-                    account_id=account_id,
-                    receipt_id=new_receipt.receipt_id,  # Link to the Receipt
-                    room_reservation_booking_date_start=date_start_Room.date(),
-                    room_reservation_booking_date_end=date_end_Room.date(),
-                    room_reservation_check_in_time=check_in_time,
-                    room_reservation_check_out_time=check_out_time,
-                    room_reservation_status="waiting",
-                    room_reservation_additional_notes=add_notes
-                )
-                db.session.add(new_reservation)
-
-        # Create VenueReservation entries if there are valid venue dates
-        if date_start_Venue and date_end_Venue:
-            for venue_id in data['selectedReservationVenues']:
-                new_reservation = VenueReservation(
-                    venue_id=venue_id,
-                    guest_id=new_guest.guest_id,
-                    account_id=account_id,
-                    receipt_id=new_receipt.receipt_id,  # Link to the Receipt
-                    venue_reservation_booking_date_start=date_start_Venue.date(),
-                    venue_reservation_booking_date_end=date_end_Venue.date(),
-                    venue_reservation_check_in_time=check_in_time,
-                    venue_reservation_check_out_time=check_out_time,
-                    venue_reservation_status="waiting",
-                    venue_reservation_additional_notes=add_notes
-                )
-                db.session.add(new_reservation)
-
-        # Commit all changes to the database
-        db.session.commit()
-
-        return jsonify({'message': 'Reservation and receipt submitted successfully!', 'receipt_id': new_receipt.receipt_id}), 201
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
 
 
 
@@ -253,60 +168,7 @@ def login():
         return jsonify({"message": "Invalid credentials"}), 401
 
 
-@app.route('/api/accounts', methods=['GET'])
-def get_accounts():
-    users = Account.query.all()
-    if users:
-        accounts = []
-        for user in users:
 
-            account_data = {
-                "account_id": user.account_id,
-                "account_email": user.account_email,
-                "account_fName": user.account_fName,
-                "account_lName": user.account_lName,
-                "account_username": user.account_username,
-                "account_role": user.account_role,  # Include role in profile data
-                "account_phone": user.account_phone,
-                "account_dob": user.account_dob.strftime('%Y-%m-%d'),  # Format date
-                "account_gender": user.account_gender,
-                "account_status": user.account_status,
-                "account_created_at": user.account_created_at.strftime('%Y-%m-%d'), # Format
-                "account_updated_at": user.account_updated_at.strftime('%Y-%m-%d'),
-                "account_last_login": user.account_last_login
-            }
-            accounts.append(account_data)
-
-        return jsonify(accounts), 200
-    else:
-        return jsonify({"error": "No accounts found"}), 404
-
-@app.route('/api/guests', methods=['GET'])
-def get_guests():
-    guests = GuestDetails.query.all()
-    if guests:
-        guestsHolder = []
-        for guest in guests:
-            guest_data = {
-                "guest_ id": guest.guest_id,
-                "guest_client": guest.guest_client,
-                "guest_type": guest.guest_type,
-                "guest_fName": guest.guest_fName,
-                "guest_lName": guest.guest_lName,
-                "guest_phone": guest.guest_phone,
-                "guest_email": guest.guest_email,
-                "guest_gender": guest.guest_gender,
-                "guest_messenger_account": guest.guest_messenger_account,
-                "guest_poi":guest.guest_poi,
-                "guest_designation":guest.guest_designation,
-                "guest_address": guest.guest_address,
-            }
-            guestsHolder.append(guest_data)
-
-        return jsonify(guestsHolder), 200
-    else:
-        return jsonify({"error": "No guests found"}), 404
-    
 
 @app.route("/api/reservations", methods=["GET"])
 def get_reservations():
@@ -321,20 +183,32 @@ def get_reservations():
     # Define date and time format
     date_time_format = "%Y-%m-%d %H:%M:%S"
 
+    # Dictionaries to count rooms and venues per guest
+    room_counts = defaultdict(int)
+    venue_counts = defaultdict(int)
+
+    # Calculate number of rooms and venues for each guest
+    for reservation in roomReservations:
+        room_counts[reservation.guest_id] += 1
+
+    for reservation in venueReservations:
+        venue_counts[reservation.guest_id] += 1
+
     # Process room reservations
     for reservation in roomReservations:
         check_in_datetime = datetime.combine(reservation.room_reservation_booking_date_start, reservation.room_reservation_check_in_time)
         check_out_datetime = datetime.combine(reservation.room_reservation_booking_date_end, reservation.room_reservation_check_out_time)
-        guest = GuestDetails.query.filter_by(guest_id = reservation.guest_id).first()
-        account = Account.query.filter_by(account_id = reservation.account_id).first()
-        receipt = Receipt.query.filter_by(receipt_id = reservation.receipt_id).first()
+        guest = GuestDetails.query.filter_by(guest_id=reservation.guest_id).first()
+        account = Account.query.filter_by(account_id=reservation.account_id).first()
+        receipt = Receipt.query.filter_by(receipt_id=reservation.receipt_id).first()
 
         reservation_data = {
             "reservation_id": reservation.room_reservation_id,
             "guest_type": guest.guest_type,
             "reservation": reservation.room_id,
-            "guest_name": guest.guest_fName + guest.guest_lName,
-            "account_name": account.account_fName + account.account_lName,
+            "guest_name": guest.guest_fName + " " + guest.guest_lName,
+            "guest_email": guest.guest_email,
+            "account_name": account.account_fName + " " + account.account_lName,
             "receipt_date": receipt.receipt_date,
             "receipt_initial_total": receipt.receipt_initial_total,
             "receipt_total_amount": receipt.receipt_total_amount,
@@ -343,6 +217,8 @@ def get_reservations():
             "check_out_date": check_out_datetime.strftime(date_time_format),
             "status": reservation.room_reservation_status,
             "additional_notes": reservation.room_reservation_additional_notes,
+            "number_of_rooms": room_counts[reservation.guest_id],
+            "number_of_venues": venue_counts[reservation.guest_id]
         }
         reservationsHolder.append(reservation_data)
 
@@ -350,16 +226,17 @@ def get_reservations():
     for reservation in venueReservations:
         check_in_datetime = datetime.combine(reservation.venue_reservation_booking_date_start, reservation.venue_reservation_check_in_time)
         check_out_datetime = datetime.combine(reservation.venue_reservation_booking_date_end, reservation.venue_reservation_check_out_time)
-        guest = GuestDetails.query.filter_by(guest_id = reservation.guest_id).first()
-        account = Account.query.filter_by(account_id = reservation.account_id).first()
-        receipt = Receipt.query.filter_by(receipt_id = reservation.receipt_id).first()
+        guest = GuestDetails.query.filter_by(guest_id=reservation.guest_id).first()
+        account = Account.query.filter_by(account_id=reservation.account_id).first()
+        receipt = Receipt.query.filter_by(receipt_id=reservation.receipt_id).first()
 
         reservation_data = {
             "reservation_id": reservation.venue_reservation_id,
             "guest_type": guest.guest_type,
             "reservation": reservation.venue_id,
-            "guest_name": guest.guest_fName + guest.guest_lName,
-            "account_name": account.account_fName + account.account_lName,
+            "guest_name": guest.guest_fName + " " + guest.guest_lName,
+            "guest_email": guest.guest_email,
+            "account_name": account.account_fName + " " + account.account_lName,
             "receipt_date": receipt.receipt_date,
             "receipt_initial_total": receipt.receipt_initial_total,
             "receipt_total_amount": receipt.receipt_total_amount,
@@ -368,10 +245,13 @@ def get_reservations():
             "check_out_date": check_out_datetime.strftime(date_time_format),
             "status": reservation.venue_reservation_status,
             "additional_notes": reservation.venue_reservation_additional_notes,
+            "number_of_rooms": room_counts[reservation.guest_id],
+            "number_of_venues": venue_counts[reservation.guest_id]
         }
         reservationsHolder.append(reservation_data)
 
     return jsonify(reservationsHolder), 200
+
 
 
 @app.route('/api/venueData', methods=['GET'])
@@ -569,32 +449,6 @@ def api_everythingAvailable():
         "venues_holder": venues_holder
     })
 
-@app.route('/api/getPrice/<string:guestType>', methods=['GET'])
-def api_getPrice(guestType):
-
-    if guestType == "Internal":
-        DoublePrice = RoomType.query.filter(RoomType.room_type_id == 1, RoomType.room_type_price_internal).all()  # Replace with the room type ID
-        TriplePrice = RoomType.query.filter(RoomType.room_type_id == 2, RoomType.room_type_price_internal).all()   # Replace with the room type ID
-        MatrimonialPrice = RoomType.query.filter(RoomType.room_type_id == 3, RoomType.room_type_price_internal).all()   # Replace with the room type ID
-
-        return jsonify({
-            "double_price": DoublePrice[0].room_type_price_internal,
-            "triple_price": TriplePrice[0].room_type_price_internal,
-            "matrimonial_price": MatrimonialPrice[0].room_type_price_internal
-        })
-    else :
-        DoublePrice = RoomType.query.filter(RoomType.room_type_id == 1, RoomType.room_type_price_external).all()  # Replace with the room type ID
-        TriplePrice = RoomType.query.filter(RoomType.room_type_id == 2, RoomType.room_type_price_external).all()   # Replace with the room type ID
-        MatrimonialPrice = RoomType.query.filter(RoomType.room_type_id == 3, RoomType.room_type_price_external).all()   # Replace with the room type ID
-
-        return jsonify({
-            "double_price": DoublePrice[0].room_type_price_external,
-            "triple_price": TriplePrice[0].room_type_price_external,
-            "matrimonial_price": MatrimonialPrice[0].room_type_price_external
-        })
-    
-
-
 @app.route('/api/availableRooms/<string:dateStart>/<string:dateEnd>', methods=['GET'])
 def api_availableRooms(dateStart, dateEnd):
     # Convert string dates to date objects
@@ -664,10 +518,6 @@ def api_availableVenues(dateStart, dateEnd):
     return jsonify({
         "venues_holder": available_venues,
     })
-
-
-
-
 
 
 
@@ -847,54 +697,71 @@ def get_reservation_status(date):
     except ValueError:
         return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
 
-@app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
-def update_reservation_status(event_id):
-    # Retrieve query parameters
-    reservation_id = request.args.get('id')
-    new_status = request.args.get('status')
-    event_type = request.args.get('type')
+# @app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
+# def update_reservation_status(event_id):
+#     # Retrieve query parameters
+#     reservation_id = request.args.get('id')
+#     new_status = request.args.get('status')
+#     event_type = request.args.get('type')
 
-    # Print values for debugging
-    print(f"Reservation ID: {reservation_id}, Status: {new_status}, Event Type: {event_type}")
+#     # Print values for debugging
+#     print(f"Reservation ID: {reservation_id}, Status: {new_status}, Event Type: {event_type}")
 
-    # Check required fields
-    if not reservation_id or not new_status or not event_type:
-        return jsonify({'error': 'Missing required fields: id, status, or type'}), 400
+#     # Check required fields
+#     if not reservation_id or not new_status or not event_type:
+#         return jsonify({'error': 'Missing required fields: id, status, or type'}), 400
 
-    # Normalize case for event_type
-    event_type = event_type.lower()
+#     # Normalize case for event_type
+#     event_type = event_type.lower()
 
-    try:
-        # Update based on type
-        if event_type == 'venue':
-            reservation = VenueReservation.query.filter_by(venue_reservation_id=event_id).first()
-            if reservation:
-                reservation.venue_reservation_status = new_status
-                db.session.commit()
-                return jsonify({'message': 'Venue reservation status updated successfully'}), 200
-            else:
-                return jsonify({'error': 'Venue reservation not found'}), 404
+#     try:
+#         # Update based on type
+#         if event_type == 'venue':
+#             reservation = VenueReservation.query.filter_by(venue_reservation_id=event_id).first()
+#             if reservation:
+#                 reservation.venue_reservation_status = new_status
+#                 db.session.commit()
+#                 return jsonify({'message': 'Venue reservation status updated successfully'}), 200
+#             else:
+#                 return jsonify({'error': 'Venue reservation not found'}), 404
 
-        elif event_type == 'room':
-            reservation = RoomReservation.query.filter_by(room_reservation_id=event_id).first()
-            if reservation:
-                reservation.room_reservation_status = new_status
-                db.session.commit()
-                return jsonify({'message': 'Room reservation status updated successfully'}), 200
-            else:
-                return jsonify({'error': 'Room reservation not found'}), 404
+#         elif event_type == 'room':
+#             reservation = RoomReservation.query.filter_by(room_reservation_id=event_id).first()
+#             if reservation:
+#                 reservation.room_reservation_status = new_status
+#                 db.session.commit()
+#                 return jsonify({'message': 'Room reservation status updated successfully'}), 200
+#             else:
+#                 return jsonify({'error': 'Room reservation not found'}), 404
 
-        else:
-            return jsonify({'error': 'Invalid reservation type'}), 400
+#         else:
+#             return jsonify({'error': 'Invalid reservation type'}), 400
 
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error updating reservation: {e}")
-        return jsonify({'error': 'An error occurred while updating the reservation'}), 500
+#     except Exception as e:
+#         db.session.rollback()
+#         print(f"Error updating reservation: {e}")
+#         return jsonify({'error': 'An error occurred while updating the reservation'}), 500
 
+
+# METHOD GET
+app.add_url_rule('/api/accounts', 'get_accounts', get_accounts, methods=['GET'])
+app.add_url_rule('/api/guests', 'get_guests', get_guests, methods=['GET'])
+app.add_url_rule('/api/getDiscounts', 'get_discounts', get_discounts, methods=['GET'])
+app.add_url_rule('/api/getAddFees', 'get_AdditionalFees', get_AdditionalFees, methods=['GET'])
+app.add_url_rule('/api/getReservations', 'get_Reservations', get_Reservations, methods=['GET'])
+app.add_url_rule('/api/getPrice/<string:guestType>', 'get_Price', get_Price, methods=['GET'])
+
+# METHOD POST
+app.add_url_rule('/api/insertDiscount', 'insert_discount', insert_discounts, methods=['POST'])
+app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
+app.add_url_rule('/api/submitReservation', 'submit_reservation', submit_reservation, methods=['POST'])
+
+
+# METHOD DELETE
+app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reservations, methods=['DELETE'])
 # Ensure the application context is active before creating tables
 if __name__ == '__main__':
-    start_xampp()
+    # start_xampp()
     with app.app_context():
         db.create_all()  # Creates the tables in the database
         # Check if room types already exist
