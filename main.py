@@ -757,7 +757,7 @@ app.add_url_rule('/api/notifications/unread', 'get_Notification', get_Notificati
 app.add_url_rule('/api/insertDiscount', 'insert_discount', insert_discounts, methods=['POST'])
 app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
 app.add_url_rule('/api/submitReservation', 'submit_reservation', submit_reservation, methods=['POST'])
-app.add_url_rule('/api/notifications', 'create_Notification', create_Notification, methods=['POST'])
+app.add_url_rule('/api/notifications/create', 'create_Notification', create_Notification, methods=['POST'])
 
 #METHOD PATCH
 app.add_url_rule('/api/notifications/<int:notification_id>/update','update_Notification', update_Notification, methods=['PATCH'] )
