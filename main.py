@@ -23,7 +23,7 @@ from marshmallow import Schema, fields, validate, ValidationError
 from flask_marshmallow import Marshmallow  # Correct import
 from werkzeug.utils import secure_filename  # For secure image uploads
 from flask_cors import CORS
-from model import db, Account, Room, RoomType, Venue, VenueReservation, RoomReservation, GuestDetails, Receipt
+from model import db, Account, Room, RoomType, Venue, VenueReservation, RoomReservation, GuestDetails, Receipt, Notification
 from datetime import datetime, time, date
 from defaultValues import rooms, roomTypes, venues
 from collections import defaultdict
@@ -35,6 +35,7 @@ from definedFunctions.apiSubmitReservation import submit_reservation
 from definedFunctions.apiReservations import get_Reservations
 from definedFunctions.apiPrice import get_Price
 from definedFunctions.apiDeleteGroupedReservation import delete_reservations
+from definedFunctions.apiNotification import get_Notification, create_Notification, delete_Notification, update_Notification
 # ================================================ #
 
 app = Flask(__name__)
@@ -750,13 +751,17 @@ app.add_url_rule('/api/getDiscounts', 'get_discounts', get_discounts, methods=['
 app.add_url_rule('/api/getAddFees', 'get_AdditionalFees', get_AdditionalFees, methods=['GET'])
 app.add_url_rule('/api/getReservations', 'get_Reservations', get_Reservations, methods=['GET'])
 app.add_url_rule('/api/getPrice/<string:guestType>', 'get_Price', get_Price, methods=['GET'])
-
+app.add_url_rule('/api/notifications/unread', 'get_Notification', get_Notification, methods=['GET'])
+                 
 # METHOD POST
 app.add_url_rule('/api/insertDiscount', 'insert_discount', insert_discounts, methods=['POST'])
 app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
 app.add_url_rule('/api/submitReservation', 'submit_reservation', submit_reservation, methods=['POST'])
+app.add_url_rule('/api/notifications', 'create_Notification', create_Notification, methods=['POST'])
 
-
+#METHOD PATCH
+app.add_url_rule('/api/notifications/<int:notification_id>/update','update_Notification', update_Notification, methods=['PATCH'] )
+app.add_url_rule('/api/notifications/<int:notification_id>/delete','delete_notification', delete_Notification, methods=['PATCH'] )
 # METHOD DELETE
 app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reservations, methods=['DELETE'])
 # Ensure the application context is active before creating tables

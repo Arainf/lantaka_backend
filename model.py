@@ -194,21 +194,17 @@ class RoomReservation(db.Model):
 
 class Notification(db.Model):
     notification_id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.account_id'))
-    guest_id = db.Column(db.Integer, db.ForeignKey('guest_details.guest_id'))
-    venue_reservation_id = db.Column(db.Integer, db.ForeignKey('venue_reservation.venue_reservation_id'))
-    room_reservation_id = db.Column(db.Integer, db.ForeignKey('room_reservation.room_reservation_id'))
-    account = db.relationship('Account', backref='notifications')
-    guest = db.relationship('GuestDetails', backref='notifications')
-    venue_reservation = db.relationship('VenueReservation', backref='notifications')
-    room_reservation = db.relationship('RoomReservation', backref='notifications')
+    notification_type = db.Column(db.String(50))
+    notification_description = db.Column(db.Text)
+    is_read = db.Column(db.Boolean, default=False) 
 
-    def __init__(self, notification_id, account_id, guest_id, venue_reservation_id, room_reservation_id):
-        self.notification_id = notification_id
-        self.account_id = account_id
-        self.guest_id = guest_id
-        self.venue_reservation_id = venue_reservation_id
-        self.room_reservation_id = room_reservation_id
+def to_dict(self):
+    return {
+        "notification_id": self.notification_id,
+        "notification_type": self.notification_type,
+        "notification_description": self.notification_description,
+        "is_read": self.is_read
+    }
 
 class Discounts(db.Model):
     discount_id = db.Column(db.Integer, primary_key=True)
