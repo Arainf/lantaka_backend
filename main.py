@@ -35,7 +35,7 @@ from definedFunctions.apiSubmitReservation import submit_reservation
 from definedFunctions.apiReservations import get_Reservations
 from definedFunctions.apiPrice import get_Price
 from definedFunctions.apiDeleteGroupedReservation import delete_reservations
-from definedFunctions.apiNotification import get_Notification, create_Notification, delete_Notification, update_Notification
+from definedFunctions.apiNotification import get_Notification, create_Notification, mark_Read_Notification
 # ================================================ #
 
 app = Flask(__name__)
@@ -589,13 +589,7 @@ def get_availability(dateStart, dateEnd, type):
         return jsonify(availability=available_venues), 200
 
     return jsonify(error='Invalid type specified'), 400
-
-
-
-
-
-
-    
+ 
 @app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
 def update_reservation_status(event_id):
     # Retrieve query parameters
@@ -760,8 +754,8 @@ app.add_url_rule('/api/submitReservation', 'submit_reservation', submit_reservat
 app.add_url_rule('/api/notifications/create', 'create_Notification', create_Notification, methods=['POST'])
 
 #METHOD PATCH
-app.add_url_rule('/api/notifications/<int:notification_id>/update','update_Notification', update_Notification, methods=['PATCH'] )
-app.add_url_rule('/api/notifications/<int:notification_id>/delete','delete_notification', delete_Notification, methods=['PATCH'] )
+app.add_url_rule('/api/notifications/markRead', 'mark_Read_Notification', mark_Read_Notification, methods=['PATCH'])
+
 # METHOD DELETE
 app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reservations, methods=['DELETE'])
 # Ensure the application context is active before creating tables

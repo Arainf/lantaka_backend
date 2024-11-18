@@ -198,12 +198,18 @@ class Notification(db.Model):
     notification_description = db.Column(db.Text)
     is_read = db.Column(db.Boolean, default=False) 
 
+    account_id = db.Column(db.Integer, db.ForeignKey('account.account_id'))
+    notification_role = db.Column(db.String(50))
+    account = db.relationship('Account', backref='notifications')
+
 def to_dict(self):
     return {
         "notification_id": self.notification_id,
         "notification_type": self.notification_type,
         "notification_description": self.notification_description,
-        "is_read": self.is_read
+        "is_read": self.is_read,
+        "account_id": self.account_id,
+        "notification_role": self.notification_role
     }
 
 class Discounts(db.Model):
