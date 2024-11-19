@@ -59,7 +59,7 @@ def get_Reservations():
             "check_out_date": check_out_datetime.strftime(date_time_format),
             "status": reservation.room_reservation_status,
             "additional_notes": reservation.room_reservation_additional_notes,
-            "reservation_type": "room",
+            "reservation_type": reservation.reservation_type,
         }
         reservations_holder.append(reservation_data)
 
@@ -105,7 +105,7 @@ def get_Reservations():
             "check_out_date": check_out_datetime.strftime(date_time_format),
             "status": reservation.venue_reservation_status,
             "additional_notes": reservation.venue_reservation_additional_notes,
-            "reservation_type": "venue",
+            "reservation_type": reservation.reservation_type,
         }
         reservations_holder.append(reservation_data)
 

@@ -144,11 +144,12 @@ class VenueReservation(db.Model):
     venue_reservation_booking_date_end = db.Column(db.Date, nullable=False)
     venue_reservation_check_in_time = db.Column(db.Time, nullable=False)
     venue_reservation_check_out_time = db.Column(db.Time, nullable=False)
-    venue_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "doneReservation"), nullable=False)
+    venue_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "done", "onCleaning"), nullable=False)
     venue_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
     venue_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
+    reservation_type = db.Column(db.Enum("venue","both"), nullable=True)
 
-    def __init__(self, venue_id, guest_id, account_id, receipt_id, venue_reservation_booking_date_start, venue_reservation_booking_date_end, venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status, venue_reservation_additional_notes, venue_reservation_pop):
+    def __init__(self, venue_id, guest_id, account_id, receipt_id, venue_reservation_booking_date_start, venue_reservation_booking_date_end, venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status, venue_reservation_additional_notes, venue_reservation_pop, reservation_type):
         self.venue_id = venue_id
         self.guest_id = guest_id
         self.account_id = account_id
@@ -160,6 +161,7 @@ class VenueReservation(db.Model):
         self.venue_reservation_status = venue_reservation_status
         self.venue_reservation_additional_notes = venue_reservation_additional_notes
         self.venue_reservation_pop = venue_reservation_pop
+        self.reservation_type = reservation_type
 
 class RoomReservation(db.Model):
     room_reservation_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -178,8 +180,9 @@ class RoomReservation(db.Model):
     room_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "done", "onCleaning"), nullable=False)
     room_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
     room_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
+    reservation_type = db.Column(db.Enum("room","both"), nullable=True)
 
-    def __init__(self, room_id, guest_id, account_id, receipt_id, room_reservation_booking_date_start, room_reservation_booking_date_end, room_reservation_check_in_time, room_reservation_check_out_time, room_reservation_status, room_reservation_additional_notes, room_reservation_pop):
+    def __init__(self, room_id, guest_id, account_id, receipt_id, room_reservation_booking_date_start, room_reservation_booking_date_end, room_reservation_check_in_time, room_reservation_check_out_time, room_reservation_status, room_reservation_additional_notes, room_reservation_pop, reservation_type):
         self.room_id = room_id
         self.guest_id = guest_id
         self.account_id = account_id
@@ -191,6 +194,7 @@ class RoomReservation(db.Model):
         self.room_reservation_status = room_reservation_status
         self.room_reservation_additional_notes = room_reservation_additional_notes
         self.room_reservation_pop = room_reservation_pop
+        self.reservation_type = reservation_type
 
 class Notification(db.Model):
     notification_id = db.Column(db.Integer, primary_key=True)
