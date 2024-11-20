@@ -35,14 +35,21 @@ from definedFunctions.apiSubmitReservation import submit_reservation
 from definedFunctions.apiReservations import get_Reservations
 from definedFunctions.apiPrice import get_Price
 from definedFunctions.apiDeleteGroupedReservation import delete_reservations
+<<<<<<< HEAD
 from definedFunctions.apiNotification import get_Notification, create_Notification, mark_Read_Notification
+=======
+from definedFunctions.apiStatusGroupedChange import change_status
+from definedFunctions.apiAvailable import get_availability
+from definedFunctions.apiReservationNotes import update_notes
+from apiGenerateFolio import generate_pdf_route
+>>>>>>> upstream/main
 # ================================================ #
 
 app = Flask(__name__)
 CORS(app)
 
 # Configuration for MySQL database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/lantaka_database'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/lantaka_database_final'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy and Marshmallow
@@ -465,7 +472,7 @@ def api_availableRooms(dateStart, dateEnd):
         # Query to find reservations that overlap with the requested date range
         overlapping_reservations = RoomReservation.query.filter(
             RoomReservation.room_id == room.room_id,
-            RoomReservation.room_reservation_status == "waiting",
+            RoomReservation.room_reservation_status.in_(["waiting", "ready", "onUse" ]),
             RoomReservation.room_reservation_booking_date_start <= date_end,  # Starts on or before the requested end date
             RoomReservation.room_reservation_booking_date_end >= date_start   # Ends on or after the requested start date
         ).all()
@@ -520,6 +527,7 @@ def api_availableVenues(dateStart, dateEnd):
         "venues_holder": available_venues,
     })
 
+<<<<<<< HEAD
 
 
 @app.route('/api/available/<string:dateStart>/<string:dateEnd>/<string:type>', methods=['GET'])
@@ -590,6 +598,9 @@ def get_availability(dateStart, dateEnd, type):
 
     return jsonify(error='Invalid type specified'), 400
  
+=======
+    
+>>>>>>> upstream/main
 @app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
 def update_reservation_status(event_id):
     # Retrieve query parameters
@@ -745,8 +756,14 @@ app.add_url_rule('/api/getDiscounts', 'get_discounts', get_discounts, methods=['
 app.add_url_rule('/api/getAddFees', 'get_AdditionalFees', get_AdditionalFees, methods=['GET'])
 app.add_url_rule('/api/getReservations', 'get_Reservations', get_Reservations, methods=['GET'])
 app.add_url_rule('/api/getPrice/<string:guestType>', 'get_Price', get_Price, methods=['GET'])
+<<<<<<< HEAD
 app.add_url_rule('/api/notifications/unread', 'get_Notification', get_Notification, methods=['GET'])
                  
+=======
+app.add_url_rule('/api/availableRooms/<string:dateStart>/<string:dateEnd>', 'get_availability', get_availability , methods=['GET'])
+app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', generate_pdf_route, methods=['POST'])
+
+>>>>>>> upstream/main
 # METHOD POST
 app.add_url_rule('/api/insertDiscount', 'insert_discount', insert_discounts, methods=['POST'])
 app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
@@ -759,6 +776,11 @@ app.add_url_rule('/api/notifications/markRead', 'mark_Read_Notification', mark_R
 # METHOD DELETE
 app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reservations, methods=['DELETE'])
 # Ensure the application context is active before creating tables
+
+# METHOD PUT 
+app.add_url_rule('/api/change_status', 'change_status' , change_status, methods=['PUT'])
+app.add_url_rule('/api/update_notes', 'update_notes' , update_notes, methods=['PUT'])
+
 if __name__ == '__main__':
     # start_xampp()
     with app.app_context():

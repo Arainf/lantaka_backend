@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Folio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        h1 {
+            font-size: 24px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        h3 {
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .details-table {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .details-item {
+            margin-bottom: 8px;
+        }
+        .details-label {
+            font-weight: bold;
+        }
+        .charges-table {
+            font-size: 11px;
+        }
+        .balance-row {
+            font-weight: bold;
+        }
+        .total-balance {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lantaka Guest Folio</h1>
+        
+        <div class="details-table">
+            <table>
+                <tr>
+                    <td class="details-label">Client:</td>
+                    <td>{{ client_name }}</td>
+                </tr>
+                <tr>
+                    <td class="details-label">Guest Name:</td>
+                    <td>{{ client_name }}</td>
+                </tr>
+                <tr>
+                    <td class="details-label">Client:</td>
+                    <td>{{ client_name }}</td>
+                </tr>
+                <tr>
+                    <td class="details-label">Client:</td>
+                    <td>{{ client_name }}</td>
+                </tr>
+            </table>
+            <div class="details-column">
+                <div class="details-item">
+                    <span class="details-label">Client:</span>
+                    <span>{{ client_name }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Guest Name:</span>
+                    <span>{{ guest_name }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Designation:</span>
+                    <span>{{ guest_designation }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Address:</span>
+                    <span>{{ guest_address }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Mode of Payment:</span>
+                    <span>{{ payment_mode }}</span>
+                </div>
+            </div>
+
+
+            <div class="details-column">
+                <div class="details-item">
+                    <span class="details-label">Folio No.:</span>
+                    <span>{{ folio_number }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Status:</span>
+                    <span>{{ folio_status }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">No. of Pax:</span>
+                    <span>{{ number_of_pax }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Check-In:</span>
+                    <span>{{ check_in_date }}</span>
+                </div>
+                <div class="details-item">
+                    <span class="details-label">Check-Out:</span>
+                    <span>{{ check_out_date }}</span>
+                </div>
+            </div>
+        </div>
+
+        {% for room in rooms %}
+        <h2>{{ room.number }}</h2>
+        <h3>Account Title: Room Fee &#40; {{ room.number }} &#41;</h3>
+        <table class="charges-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Ref. No.</th>
+                    <th>Description</th>
+                    <th>Base Charge</th>
+                    <th>VAT</th>
+                    <th>Disc.</th>
+                    <th>Misc. Charges</th>
+                    <th>LT</th>
+                    <th>ST</th>
+                    <th>Dr.</th>
+                    <th>Cr.</th>
+                    <th>Bal.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for charge in room.charges %}
+                <tr>
+                    <td>{{ charge.date }}</td>
+                    <td>{{ charge.reference_number }}</td>
+                    <td>{{ charge.description }}</td>
+                    <td>{{ charge.base_charge }}</td>
+                    <td>{{ charge.vat }}</td>
+                    <td>{{ charge.discount }}</td>
+                    <td>{{ charge.misc_charges }}</td>
+                    <td>{{ charge.lt }}</td>
+                    <td>{{ charge.st }}</td>
+                    <td>{{ charge.dr }}</td>
+                    <td>{{ charge.cr }}</td>
+                    <td>{{ charge.balance }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="balance-row">
+                    <td colspan="11">Ending Balance:</td>
+                    <td>{{ room.balance }}</td>
+                </tr>
+            </tbody>
+        </table>
+        {% endfor %}
+
+        {% for venue in venues %}
+        <h2>Venue: {{ venue.name }}</h2>
+        <h3>Account Title: Venue Fee</h3>
+        <table class="charges-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Ref. No.</th>
+                    <th>Description</th>
+                    <th>Base Charge</th>
+                    <th>VAT</th>
+                    <th>Disc.</th>
+                    <th>Misc. Charges</th>
+                    <th>LT</th>
+                    <th>ST</th>
+                    <th>Dr.</th>
+                    <th>Cr.</th>
+                    <th>Bal.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for charge in venue.charges %}
+                <tr>
+                    <td>{{ charge.date }}</td>
+                    <td>{{ charge.reference_number }}</td>
+                    <td>{{ charge.description }}</td>
+                    <td>{{ charge.base_charge }}</td>
+                    <td>{{ charge.vat }}</td>
+                    <td>{{ charge.discount }}</td>
+                    <td>{{ charge.misc_charges }}</td>
+                    <td>{{ charge.lt }}</td>
+                    <td>{{ charge.st }}</td>
+                    <td>{{ charge.dr }}</td>
+                    <td>{{ charge.cr }}</td>
+                    <td>{{ charge.balance }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="balance-row">
+                    <td colspan="11">Ending Balance:</td>
+                    <td>{{ venue.balance }}</td>
+                </tr>
+            </tbody>
+        </table>
+        {% endfor %}
+
+        <div class="total-balance">
+            Total Balance: {{ total_balance }}
+        </div>
+    </div>
+</body>
+</html>

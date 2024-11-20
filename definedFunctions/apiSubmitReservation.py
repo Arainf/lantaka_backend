@@ -12,12 +12,13 @@ def submit_reservation():
         account = db.session.query(Account).filter_by(account_id=account_id).first()
         if not account:
             return jsonify({'error': 'Invalid account ID'}), 400
+        
+        reservationType = data['reservationType']
 
         # Check if the guest already exists
         existing_guest = db.session.query(GuestDetails).filter_by(
             guest_email=data['email'],
-            guest_fName=data['firstName'],
-            guest_lName=data['lastName']
+            guest_type=data['clientType']
         ).first()
 
         if existing_guest:
@@ -79,41 +80,46 @@ def submit_reservation():
         db.session.flush()  # Ensure the receipt_id is available
 
         # Create RoomReservation entries if there are valid room dates
-        if date_start_Room and date_end_Room:
-            for room_category in ['double', 'triple', 'matrimonial']:  # Add other categories as needed
-                for room_id in data['selectedReservationRooms'].get(room_category, []):
-                    new_reservation = RoomReservation(
-                        room_id=room_id,
+        
+        if reservationType == "room" or reservationType == "both" :
+            if date_start_Room and date_end_Room:
+                for room_category in ['double', 'triple', 'matrimonial']:  # Add other categories as needed
+                    for room_id in data['selectedReservationRooms'].get(room_category, []):
+                        new_reservation = RoomReservation(
+                            room_id=room_id,
+                            guest_id=new_guest.guest_id,  # Use the guest_id from the existing or newly created guest
+                            account_id=account_id,
+                            receipt_id=new_receipt.receipt_id,  # Link to the Receipt
+                            room_reservation_booking_date_start=date_start_Room.date(),
+                            room_reservation_booking_date_end=date_end_Room.date(),
+                            room_reservation_check_in_time=check_in_time,
+                            room_reservation_check_out_time=check_out_time,
+                            room_reservation_status="waiting",
+                            room_reservation_additional_notes=add_notes,
+                            room_reservation_pop=None,
+                            reservation_type=reservationType
+                        )
+                        db.session.add(new_reservation)
+
+        # Create VenueReservation entries if there are valid venue dates
+        if reservationType == "venue" or reservationType == "both" :
+            if date_start_Venue and date_end_Venue:
+                for venue_id in data['selectedReservationVenues']:
+                    new_reservation = VenueReservation(
+                        venue_id=venue_id,
                         guest_id=new_guest.guest_id,  # Use the guest_id from the existing or newly created guest
                         account_id=account_id,
                         receipt_id=new_receipt.receipt_id,  # Link to the Receipt
-                        room_reservation_booking_date_start=date_start_Room.date(),
-                        room_reservation_booking_date_end=date_end_Room.date(),
-                        room_reservation_check_in_time=check_in_time,
-                        room_reservation_check_out_time=check_out_time,
-                        room_reservation_status="waiting",
-                        room_reservation_additional_notes=add_notes,
-                        room_reservation_pop=None
+                        venue_reservation_booking_date_start=date_start_Venue.date(),
+                        venue_reservation_booking_date_end=date_end_Venue.date(),
+                        venue_reservation_check_in_time=check_in_time,
+                        venue_reservation_check_out_time=check_out_time,
+                        venue_reservation_status="waiting",
+                        venue_reservation_additional_notes=add_notes,
+                        venue_reservation_pop=None,
+                        reservation_type=reservationType
                     )
                     db.session.add(new_reservation)
-
-        # Create VenueReservation entries if there are valid venue dates
-        if date_start_Venue and date_end_Venue:
-            for venue_id in data['selectedReservationVenues']:
-                new_reservation = VenueReservation(
-                    venue_id=venue_id,
-                    guest_id=new_guest.guest_id,  # Use the guest_id from the existing or newly created guest
-                    account_id=account_id,
-                    receipt_id=new_receipt.receipt_id,  # Link to the Receipt
-                    venue_reservation_booking_date_start=date_start_Venue.date(),
-                    venue_reservation_booking_date_end=date_end_Venue.date(),
-                    venue_reservation_check_in_time=check_in_time,
-                    venue_reservation_check_out_time=check_out_time,
-                    venue_reservation_status="waiting",
-                    venue_reservation_additional_notes=add_notes,
-                    venue_reservation_pop=None
-                )
-                db.session.add(new_reservation)
 
         # Commit all changes to the database
         db.session.commit()
