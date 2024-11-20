@@ -35,15 +35,15 @@ from definedFunctions.apiSubmitReservation import submit_reservation
 from definedFunctions.apiReservations import get_Reservations
 from definedFunctions.apiPrice import get_Price
 from definedFunctions.apiDeleteGroupedReservation import delete_reservations
-<<<<<<< HEAD
+
 from definedFunctions.apiNotification import get_Notification, create_Notification, mark_Read_Notification
-=======
+
 from definedFunctions.apiStatusGroupedChange import change_status
 from definedFunctions.apiAvailable import get_availability
 from definedFunctions.apiReservationNotes import update_notes
 from apiGenerateFolio import generate_pdf_route
->>>>>>> upstream/main
-# ================================================ #
+
+
 
 app = Flask(__name__)
 CORS(app)
@@ -527,8 +527,6 @@ def api_availableVenues(dateStart, dateEnd):
         "venues_holder": available_venues,
     })
 
-<<<<<<< HEAD
-
 
 @app.route('/api/available/<string:dateStart>/<string:dateEnd>/<string:type>', methods=['GET'])
 def get_availability(dateStart, dateEnd, type):
@@ -597,10 +595,8 @@ def get_availability(dateStart, dateEnd, type):
         return jsonify(availability=available_venues), 200
 
     return jsonify(error='Invalid type specified'), 400
- 
-=======
+
     
->>>>>>> upstream/main
 @app.route('/api/reservationCalendar/<int:event_id>', methods=['PUT'])
 def update_reservation_status(event_id):
     # Retrieve query parameters
@@ -756,19 +752,16 @@ app.add_url_rule('/api/getDiscounts', 'get_discounts', get_discounts, methods=['
 app.add_url_rule('/api/getAddFees', 'get_AdditionalFees', get_AdditionalFees, methods=['GET'])
 app.add_url_rule('/api/getReservations', 'get_Reservations', get_Reservations, methods=['GET'])
 app.add_url_rule('/api/getPrice/<string:guestType>', 'get_Price', get_Price, methods=['GET'])
-<<<<<<< HEAD
 app.add_url_rule('/api/notifications/unread', 'get_Notification', get_Notification, methods=['GET'])
-                 
-=======
 app.add_url_rule('/api/availableRooms/<string:dateStart>/<string:dateEnd>', 'get_availability', get_availability , methods=['GET'])
-app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', generate_pdf_route, methods=['POST'])
 
->>>>>>> upstream/main
 # METHOD POST
 app.add_url_rule('/api/insertDiscount', 'insert_discount', insert_discounts, methods=['POST'])
 app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
 app.add_url_rule('/api/submitReservation', 'submit_reservation', submit_reservation, methods=['POST'])
 app.add_url_rule('/api/notifications/create', 'create_Notification', create_Notification, methods=['POST'])
+app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', generate_pdf_route, methods=['POST'])
+
 
 #METHOD PATCH
 app.add_url_rule('/api/notifications/markRead', 'mark_Read_Notification', mark_Read_Notification, methods=['PATCH'])
