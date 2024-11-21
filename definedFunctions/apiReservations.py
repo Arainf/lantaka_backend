@@ -1,14 +1,45 @@
-from flask import jsonify
+from flask import jsonify, request
 from model import Account, RoomReservation, VenueReservation, Receipt, GuestDetails, Room, RoomType, db
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def get_Reservations():
-    room_reservations = RoomReservation.query.all()
-    venue_reservations = VenueReservation.query.all()
+    filter_by = request.args.get('filter_by')  # Options: 'month', 'week'
+    date_param = request.args.get('date')  # Expected format: YYYY-MM-DD
+
+    try:
+        filter_date = datetime.strptime(date_param, "%Y-%m-%d") if date_param else datetime.now()
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+    
+    
+    if filter_by == "month":
+        start_date = filter_date.replace(day=1)
+        next_month = start_date.month % 12 + 1
+        end_date = start_date.replace(month=next_month, day=1) - timedelta(days=1)
+    elif filter_by == "week":
+        start_date = filter_date - timedelta(days=filter_date.weekday())  # Monday of the current week
+        end_date = start_date + timedelta(days=6)  # Sunday of the current week
+    else:
+        start_date = None
+        end_date = None
+
+    if start_date and end_date:
+        room_reservations = RoomReservation.query.filter(
+            RoomReservation.room_reservation_booking_date_start >= start_date,
+            RoomReservation.room_reservation_booking_date_start <= end_date
+        ).all()
+
+        venue_reservations = VenueReservation.query.filter(
+            VenueReservation.venue_reservation_booking_date_start >= start_date,
+            VenueReservation.venue_reservation_booking_date_start <= end_date
+        ).all()
+    else:
+        room_reservations = RoomReservation.query.all()
+        venue_reservations = VenueReservation.query.all()
 
     if not room_reservations and not venue_reservations:
         return jsonify({"error": "No reservations found"}), 404
-
+    
     reservations_holder = []
 
     # Define date and time format
