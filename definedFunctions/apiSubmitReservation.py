@@ -18,7 +18,9 @@ def submit_reservation():
         # Check if the guest already exists
         existing_guest = db.session.query(GuestDetails).filter_by(
             guest_email=data['email'],
-            guest_type=data['clientType']
+            guest_type=data['clientType'],
+            guest_fName=data['firstName'],
+            guest_lName=data['lastName'],
         ).first()
 
         if existing_guest:

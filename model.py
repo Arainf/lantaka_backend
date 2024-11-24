@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 import datetime
+import base64
 
 db = SQLAlchemy()
 
@@ -100,6 +101,17 @@ class RoomType(db.Model):
         self.room_type_price_external = room_type_price_external
         self.room_type_capacity = room_type_capacity
         self.room_type_img = room_type_img
+
+    def to_dict(self):
+        return {
+            'room_type_id': self.room_type_id,
+            'room_type_name': self.room_type_name,
+            'room_type_description': self.room_type_description,
+            'room_type_price_internal': self.room_type_price_internal,
+            'room_type_price_external': self.room_type_price_external,
+            'room_type_capacity': self.room_type_capacity,
+            'room_type_img': base64.b64encode(self.room_type_img).decode('utf-8') if self.room_type_img else None
+        }
 
 class Venue(db.Model):
     venue_id = db.Column(db.String(50), primary_key=True)
@@ -237,6 +249,14 @@ class AdditionalFees(db.Model):
     def __init__(self, additional_fee_name, additional_fee_amount):
         self.additional_fee_name = additional_fee_name
         self.additional_fee_amount = additional_fee_amount
+
+    
+    def to_dict(self):
+        return {
+            "additional_fee_id": self.additional_fee_id,
+            "additional_fee_name": self.additional_fee_name,
+            "additional_fee_amount": self.additional_fee_amount
+        }
 
 # Junction table for the many-to-many relationship between Receipt and Discounts
 receipt_discount = db.Table('receipt_discount',

@@ -22,7 +22,7 @@ from flask import Flask, request, jsonify, Response, session
 from marshmallow import Schema, fields, validate, ValidationError
 from flask_marshmallow import Marshmallow  # Correct import
 from werkzeug.utils import secure_filename  # For secure image uploads
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from model import db, Account, Room, RoomType, Venue, VenueReservation, RoomReservation, GuestDetails, Receipt
 from datetime import datetime, time, date
 from defaultValues import rooms, roomTypes, venues
@@ -30,7 +30,7 @@ from collections import defaultdict
 from definedFunctions.apiAccountModel import get_accounts
 from definedFunctions.apiGuestModel import get_guests
 from definedFunctions.apiDiscounts import get_discounts, insert_discounts
-from definedFunctions.apiAdditionalFees import get_AdditionalFees, insert_AdditionalFees
+from definedFunctions.apiAdditionalFees import get_AdditionalFees, insert_AdditionalFees, get_additional_fees, add_fee, update_fee, delete_fee
 from definedFunctions.apiSubmitReservation import submit_reservation
 from definedFunctions.apiReservations import get_Reservations
 from definedFunctions.apiPrice import get_Price
@@ -39,6 +39,10 @@ from definedFunctions.apiStatusGroupedChange import change_status
 from definedFunctions.apiAvailable import get_availability
 from definedFunctions.apiReservationNotes import update_notes
 from apiGenerateFolio import generate_pdf_route
+from definedFunctions.apiContents import get_room_and_venue, get_RoomTypes
+from definedFunctions.apiRoomVenueContent import delete_venue_room, update_venue_room, create_venue_room
+from definedFunctions.apiUtilities import add_discount, edit_discount, delete_discount
+from definedFunctions.apiRoomTypes import get_room_types, add_room_type, update_room_type, delete_room_type
 # ================================================ #
 
 app = Flask(__name__)
@@ -47,6 +51,7 @@ CORS(app)
 # Configuration for MySQL database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/lantaka_database_final'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 
 # Initialize SQLAlchemy and Marshmallow
 db.init_app(app)  # Initialize with app
@@ -384,15 +389,27 @@ def get_venue_details_response(venue, currentDate):
 @app.route('/api/image/<string:item_id>', methods=['GET'])
 def serve_image(item_id):
     item_type = request.args.get('type')
+
     if item_type == 'room':
-        room = Room.query.get(item_id)
-        if room and room.room_type and room.room_type.room_type_img:
-            return Response(room.room_type.room_type_img, mimetype='image/webp')
+        if item_id.isdigit():
+            # If the item_id is numeric, assume it's a RoomType ID
+            room_type = RoomType.query.get(item_id)
+            if room_type and room_type.room_type_img:
+                return Response(room_type.room_type_img, mimetype='image/webp')
+        else:
+            # Otherwise, assume it's a Room identifier
+            room = Room.query.filter_by(room_id=item_id).first()
+            if room and room.room_type and room.room_type.room_type_img:
+                return Response(room.room_type.room_type_img, mimetype='image/webp')
+
     elif item_type == 'venue':
         venue = Venue.query.get(item_id)
         if venue and venue.venue_img:
             return Response(venue.venue_img, mimetype='image/webp')
+
     return jsonify({'error': 'Image not found'}), 404
+
+
 
 
 @app.route('/api/reservationCalendar', methods=['GET'])
@@ -680,21 +697,37 @@ app.add_url_rule('/api/getAddFees', 'get_AdditionalFees', get_AdditionalFees, me
 app.add_url_rule('/api/getReservations', 'get_Reservations', get_Reservations, methods=['GET'])
 app.add_url_rule('/api/getPrice/<string:guestType>', 'get_Price', get_Price, methods=['GET'])
 app.add_url_rule('/api/availableRooms/<string:dateStart>/<string:dateEnd>', 'get_availability', get_availability , methods=['GET'])
-app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', generate_pdf_route, methods=['POST'])
+app.add_url_rule('/api/getRoomandVenue', 'get_room_and_venue', get_room_and_venue , methods=['GET'])
+app.add_url_rule('/api/getRoomTypes', 'get_RoomTypes', get_RoomTypes , methods=['GET'])
+app.add_url_rule('/api/roomTypes', 'get_room_types', get_room_types , methods=['GET'])
+app.add_url_rule('/api/getAddFees2', 'get_additional_fees', get_additional_fees , methods=['GET'])
+# app.add_url_rule('/serve_image/<item_id>', 'serve_image', serve_image , methods=['GET'])
+
+
 
 # METHOD POST
 app.add_url_rule('/api/insertDiscount', 'insert_discount', insert_discounts, methods=['POST'])
 app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
 app.add_url_rule('/api/submitReservation', 'submit_reservation', submit_reservation, methods=['POST'])
-
+app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', cross_origin(generate_pdf_route), methods=['POST'])
+app.add_url_rule('/api/add-venue-room', 'create_venue_room', create_venue_room, methods=['POST'])
+app.add_url_rule('/api/discountAdd', 'add_discount', add_discount, methods=['POST'])
+app.add_url_rule('/api/addFee', 'add_fee', add_fee, methods=['POST'])
 
 # METHOD DELETE
 app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reservations, methods=['DELETE'])
+app.add_url_rule('/api/venue-room/<string:item_id>', 'delete_venue_room', delete_venue_room, methods=['DELETE'])
+app.add_url_rule('/api/discountDelete', 'delete_discount', delete_discount, methods=['DELETE'])
+app.add_url_rule('/api/deleteFee/<int:id>', 'delete_fee', delete_fee, methods=['DELETE'])
 # Ensure the application context is active before creating tables
 
 # METHOD PUT 
 app.add_url_rule('/api/change_status', 'change_status' , change_status, methods=['PUT'])
 app.add_url_rule('/api/update_notes', 'update_notes' , update_notes, methods=['PUT'])
+app.add_url_rule('/api/venue-room/<string:item_id>', 'update_venue_room' , update_venue_room, methods=['PUT'])
+app.add_url_rule('/api/discountEdit', 'edit_discount' , edit_discount, methods=['PUT'])
+app.add_url_rule('/api/roomTypes/<int:id>', 'update_room_type' , update_room_type, methods=['PUT'])
+app.add_url_rule('/api/updateFee/<int:id>', 'update_fee' , update_fee, methods=['PUT'])
 
 if __name__ == '__main__':
     # start_xampp()
