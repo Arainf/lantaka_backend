@@ -142,6 +142,8 @@ class Venue(db.Model):
             "room_isready": room_isready,
         }
 
+from datetime import datetime
+
 class VenueReservation(db.Model):
     venue_reservation_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     venue_id = db.Column(db.String(50), db.ForeignKey('venue.venue_id'))
@@ -160,8 +162,11 @@ class VenueReservation(db.Model):
     venue_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
     venue_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
     reservation_type = db.Column(db.Enum("venue","both"), nullable=True)
+    
+    # New reservation_time field
+    reservation_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    def __init__(self, venue_id, guest_id, account_id, receipt_id, venue_reservation_booking_date_start, venue_reservation_booking_date_end, venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status, venue_reservation_additional_notes, venue_reservation_pop, reservation_type):
+    def __init__(self, venue_id, guest_id, account_id, receipt_id, venue_reservation_booking_date_start, venue_reservation_booking_date_end, venue_reservation_check_in_time, venue_reservation_check_out_time, venue_reservation_status, venue_reservation_additional_notes, venue_reservation_pop, reservation_type, reservation_time=None):
         self.venue_id = venue_id
         self.guest_id = guest_id
         self.account_id = account_id
@@ -174,6 +179,9 @@ class VenueReservation(db.Model):
         self.venue_reservation_additional_notes = venue_reservation_additional_notes
         self.venue_reservation_pop = venue_reservation_pop
         self.reservation_type = reservation_type
+        # Use the provided reservation_time, or default to the current time
+        self.reservation_time = reservation_time if reservation_time else datetime.utcnow()
+
 
 class RoomReservation(db.Model):
     room_reservation_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -193,8 +201,11 @@ class RoomReservation(db.Model):
     room_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
     room_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
     reservation_type = db.Column(db.Enum("room","both"), nullable=True)
+    
+    # New reservation_time field
+    reservation_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    def __init__(self, room_id, guest_id, account_id, receipt_id, room_reservation_booking_date_start, room_reservation_booking_date_end, room_reservation_check_in_time, room_reservation_check_out_time, room_reservation_status, room_reservation_additional_notes, room_reservation_pop, reservation_type):
+    def __init__(self, room_id, guest_id, account_id, receipt_id, room_reservation_booking_date_start, room_reservation_booking_date_end, room_reservation_check_in_time, room_reservation_check_out_time, room_reservation_status, room_reservation_additional_notes, room_reservation_pop, reservation_type, reservation_time=None):
         self.room_id = room_id
         self.guest_id = guest_id
         self.account_id = account_id
@@ -207,24 +218,23 @@ class RoomReservation(db.Model):
         self.room_reservation_additional_notes = room_reservation_additional_notes
         self.room_reservation_pop = room_reservation_pop
         self.reservation_type = reservation_type
+        # Use the provided reservation_time, or default to the current time
+        self.reservation_time = reservation_time if reservation_time else datetime.utcnow()
+
 
 class Notification(db.Model):
     notification_id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.account_id'))
-    guest_id = db.Column(db.Integer, db.ForeignKey('guest_details.guest_id'))
-    venue_reservation_id = db.Column(db.Integer, db.ForeignKey('venue_reservation.venue_reservation_id'))
-    room_reservation_id = db.Column(db.Integer, db.ForeignKey('room_reservation.room_reservation_id'))
-    account = db.relationship('Account', backref='notifications')
-    guest = db.relationship('GuestDetails', backref='notifications')
-    venue_reservation = db.relationship('VenueReservation', backref='notifications')
-    room_reservation = db.relationship('RoomReservation', backref='notifications')
+    notification_type = db.Column(db.String(50))
+    notification_description = db.Column(db.String(1000), nullable=True)
+    is_read = db.Column(db.Boolean, default=False) 
+    notification_role = db.Column(db.Enum("Administrator", "Employee"), nullable=True)
 
-    def __init__(self, notification_id, account_id, guest_id, venue_reservation_id, room_reservation_id):
-        self.notification_id = notification_id
-        self.account_id = account_id
-        self.guest_id = guest_id
-        self.venue_reservation_id = venue_reservation_id
-        self.room_reservation_id = room_reservation_id
+    def __init__(self, notification_type, notification_description, is_read, notification_role):
+        self.notification_type = notification_type
+        self.notification_description = notification_description
+        self.is_read = is_read  # Default is unread
+        self.notification_role = notification_role
+        
 
 class Discounts(db.Model):
     discount_id = db.Column(db.Integer, primary_key=True)

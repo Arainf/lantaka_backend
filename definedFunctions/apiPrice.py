@@ -12,7 +12,7 @@ def get_Price(guestType):
     print(f"Total Venues: {len(venues)}")
 
     # Check guest type and fetch prices accordingly
-    if guestType == "Internal":
+    if guestType == "internal":
         DoublePrice = RoomType.query.filter(RoomType.room_type_id == 1).first().room_type_price_internal
         TriplePrice = RoomType.query.filter(RoomType.room_type_id == 2).first().room_type_price_internal
         MatrimonialPrice = RoomType.query.filter(RoomType.room_type_id == 3).first().room_type_price_internal

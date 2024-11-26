@@ -18,3 +18,4 @@ SQLAlchemy==2.0.35
 typing_extensions==4.12.2
 Werkzeug==3.0.0
 pdfkit==1.0.0
+dateutil==1.4

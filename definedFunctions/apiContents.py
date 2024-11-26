@@ -96,31 +96,23 @@ def get_room_and_venue():
 
 
 def serve_image(item_id):
-    """
-    Serve image for a given item ID and type (room or venue).
-    """
-    try:
-        item_type = request.args.get('item_type')
-
-        # Serve Room Type Image (Image is stored in RoomType model)
-        if item_type == 'room':
-            room = Room.query.get(item_id)
+    item_type = request.args.get('type')
+    if item_type == 'room':
+        if item_id.isdigit():
+            # If the item_id is numeric, assume it's a RoomType ID
+            room_type = RoomType.query.get(item_id)
+            if room_type and room_type.room_type_img:
+                return Response(room_type.room_type_img, mimetype='image/webp')
+        else:
+            # Otherwise, assume it's a Room identifier
+            room = Room.query.filter_by(room_id=item_id).first()
             if room and room.room_type and room.room_type.room_type_img:
-                # Serve the room type image
                 return Response(room.room_type.room_type_img, mimetype='image/webp')
-
-        # Serve Venue Image (Image is stored in Venue model)
-        elif item_type == 'venue':
-            venue = Venue.query.get(item_id)
-            if venue and venue.venue_img:
-                # Serve the venue image
-                return Response(venue.venue_img, mimetype='image/webp')
-
-        # Item not found
-        return jsonify({'error': 'Image not found'}), 404
-
-    except Exception as e:
-        return jsonify({'error': 'An error occurred while serving the image', 'message': str(e)}), 500
+    elif item_type == 'venue':
+        venue = Venue.query.get(item_id)
+        if venue and venue.venue_img:
+            return Response(venue.venue_img, mimetype='image/webp')
+    return jsonify({'error': 'Image not found'}), 404
 
 
 def get_RoomTypes():

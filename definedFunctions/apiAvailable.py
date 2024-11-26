@@ -68,3 +68,57 @@ def get_availability(dateStart, dateEnd, type):
         return jsonify(availability=available_venues), 200
 
     return jsonify(error='Invalid type specified'), 400
+
+
+def api_availableRooms(dateStart, dateEnd):
+    # Convert string dates to date objects
+    date_start = datetime.strptime(dateStart, '%Y-%m-%d').date()
+    date_end = datetime.strptime(dateEnd, '%Y-%m-%d').date()
+    # Get all rooms
+    rooms = Room.query.all()
+    available_rooms = []
+    for room in rooms:
+        # Query to find reservations that overlap with the requested date range
+        overlapping_reservations = RoomReservation.query.filter(
+            RoomReservation.room_id == room.room_id,
+            RoomReservation.room_reservation_status.in_(["waiting", "ready", "onUse" ]),
+            RoomReservation.room_reservation_booking_date_start <= date_end,  # Starts on or before the requested end date
+            RoomReservation.room_reservation_booking_date_end >= date_start   # Ends on or after the requested start date
+        ).all()
+        # Set room_status based on whether there are overlapping reservations
+        room_status = len(overlapping_reservations) == 0  # True if no overlapping reservations
+        room_dict = room.to_dict(is_available=room_status)  # Pass room_status to to_dict
+        available_rooms.append(room_dict)
+    double_rooms = [room for room in available_rooms if room['room_type_id'] == 1]
+    triple_rooms = [room for room in available_rooms if room['room_type_id'] == 2]
+    matrimonial_rooms = [room for room in available_rooms if room['room_type_id'] == 3]
+    return jsonify({
+        "double_rooms": double_rooms,
+        "triple_rooms": triple_rooms,
+        "matrimonial_rooms": matrimonial_rooms
+    })
+
+def api_availableVenues(dateStart, dateEnd):
+    # Convert string dates to date objects
+    date_start = datetime.strptime(dateStart, '%Y-%m-%d').date()
+    date_end = datetime.strptime(dateEnd, '%Y-%m-%d').date()
+    venues = Venue.query.all()
+    available_venues = []
+    print(f"Start Date: {date_start}, End Date: {date_end}")
+    print(f"Total Venues: {len(venues)}")
+    for venue in venues:
+        # If there are no reservations in the VenueReservation table, assume it's available
+        overlapping_reservations = VenueReservation.query.filter(
+            VenueReservation.venue_id == venue.venue_id,
+            VenueReservation.venue_reservation_status == "waiting",
+            VenueReservation.venue_reservation_booking_date_start <= date_end,
+            VenueReservation.venue_reservation_booking_date_end >= date_start
+        ).all()
+        print(f"Venue {venue.venue_id}: Overlapping Reservations: {len(overlapping_reservations)}")
+        room_status = len(overlapping_reservations) == 0  # Available if no overlapping reservations
+        venue_dict = venue.to_dict(is_available=room_status)
+        available_venues.append(venue_dict)
+    print(f"Available Venues: {len(available_venues)}")
+    return jsonify({
+        "venues_holder": available_venues,
+    })
