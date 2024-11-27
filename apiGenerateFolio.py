@@ -1,49 +1,47 @@
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
+from flask import Flask, request, jsonify, send_file, after_this_request, current_app
 from model import db, GuestDetails, RoomReservation, VenueReservation, Receipt, Room, Venue, RoomType
 from datetime import datetime, timedelta
-import jinja2
-import pdfkit
+from fpdf import FPDF
 import os
 import traceback
+import logging
 
-# Configure PDFKit
-config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-def render_template(data):
-    print("Rendering template...")
-    template_loader = jinja2.FileSystemLoader(searchpath="./guestFolio/")
-    template_env = jinja2.Environment(loader=template_loader)
-    template = template_env.get_template("guestFolioTemp.html")
-    return template.render(data)
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 24)
+        self.cell(0, 10, 'Lantaka Guest Folio', 0, 1, 'C')
+        self.ln(10)
 
-def generate_pdf(guest_data, output_dir="./output"):
-    print("Generating PDF...")
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"guest_folio_{guest_data['folio_number']}.pdf")
-    html_content = render_template(guest_data)
-    pdfkit.from_string(html_content, output_file, configuration=config)
-    print(f"PDF generated at: {output_file}")
-    return output_file
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 def generate_pdf_route():
-    print("Received request for /generate-pdf")
+    logger.info("Received request for /generate-pdf")
     try:
         data = request.get_json()
-        print("Request data:", data)
+        logger.debug(f"Request data: {data}")
         
         guest_id = data.get('guest_id')
         reservation_ids = data.get('reservation_ids')
         reservation_type = data.get('type')
 
         if not reservation_ids:
+            logger.error("No reservation IDs provided")
             return jsonify({"error": "No reservation IDs provided"}), 400
         if not guest_id:
+            logger.error("No guest ID provided")
             return jsonify({"error": "No guest ID provided"}), 400
 
         with db.session.begin():
             guest = GuestDetails.query.get(guest_id)
             if not guest:
+                logger.error(f"Guest not found for ID: {guest_id}")
                 return jsonify({"error": "Guest not found"}), 404
 
             room_reservations = []
@@ -63,13 +61,17 @@ def generate_pdf_route():
 
             all_reservations = room_reservations + venue_reservations
             if not all_reservations:
+                logger.error(f"No reservations found for guest ID: {guest_id}")
                 return jsonify({"error": "No reservations found"}), 404
 
-            receipt = Receipt.query.filter(
-                Receipt.receipt_id.in_([r.receipt_id for r in all_reservations])
-            ).first()
+            receipt_ids = [r.receipt_id for r in all_reservations if r.receipt_id is not None]
+            if not receipt_ids:
+                logger.error(f"No receipt IDs found for reservations")
+                return jsonify({"error": "No receipts found for reservations"}), 404
 
+            receipt = Receipt.query.filter(Receipt.receipt_id.in_(receipt_ids)).first()
             if not receipt:
+                logger.error(f"No receipt found for IDs: {receipt_ids}")
                 return jsonify({"error": "Receipt not found"}), 404
 
             guest_data = {
@@ -108,11 +110,11 @@ def generate_pdf_route():
                         'reference_number': f'Room Fee {i+1}',
                         'description': 'Room Fee',
                         'base_charge': daily_rate,
-                        'vat': 0,  # Add VAT calculation if needed
-                        'discount': 0,  # Add discount calculation if needed
-                        'misc_charges': 0,  # Add miscellaneous charges if needed
-                        'lt': 0,  # Add LT calculation if needed
-                        'st': 0,  # Add ST calculation if needed
+                        'vat': 0,
+                        'discount': 0,
+                        'misc_charges': 0,
+                        'lt': 0,
+                        'st': 0,
                         'dr': daily_rate,
                         'cr': 0,
                         'balance': daily_rate * (i + 1)
@@ -145,11 +147,11 @@ def generate_pdf_route():
                         'reference_number': f'Venue Fee {i+1}',
                         'description': 'Venue Fee',
                         'base_charge': daily_rate,
-                        'vat': 0,  # Add VAT calculation if needed
-                        'discount': 0,  # Add discount calculation if needed
-                        'misc_charges': 0,  # Add miscellaneous charges if needed
-                        'lt': 0,  # Add LT calculation if needed
-                        'st': 0,  # Add ST calculation if needed
+                        'vat': 0,
+                        'discount': 0,
+                        'misc_charges': 0,
+                        'lt': 0,
+                        'st': 0,
                         'dr': daily_rate,
                         'cr': 0,
                         'balance': daily_rate * (i + 1)
@@ -165,14 +167,119 @@ def generate_pdf_route():
 
             guest_data['total_balance'] = sum(room['balance'] for room in guest_data['rooms']) + sum(venue['balance'] for venue in guest_data['venues'])
 
-            pdf_path = generate_pdf(guest_data)
+            pdf = PDF()
+            pdf.add_page()
+            pdf.set_auto_page_break(auto=True, margin=15)
 
-            # Serve the file and delete it after serving
-            response = send_file(pdf_path, as_attachment=True, mimetype='application/pdf')
-            return response
+            # Guest Details
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Guest Details", 0, 1)
+            pdf.set_font("Arial", "", 10)
+            pdf.cell(95, 7, f"Client: {guest_data['client_name']}", 0, 0)
+            pdf.cell(95, 7, f"Folio No.: {guest_data['folio_number']}", 0, 1)
+            pdf.cell(95, 7, f"Guest Name: {guest_data['guest_name']}", 0, 0)
+            pdf.cell(95, 7, f"Status: {guest_data['folio_status']}", 0, 1)
+            pdf.cell(95, 7, f"Designation: {guest_data['guest_designation']}", 0, 0)
+            pdf.cell(95, 7, f"No. of Pax: {guest_data['number_of_pax']}", 0, 1)
+            pdf.cell(95, 7, f"Address: {guest_data['guest_address']}", 0, 0)
+            pdf.cell(95, 7, f"Check-In: {guest_data['check_in_date']}", 0, 1)
+            pdf.cell(95, 7, f"Mode of Payment: {guest_data['payment_mode']}", 0, 0)
+            pdf.cell(95, 7, f"Check-Out: {guest_data['check_out_date']}", 0, 1)
+            pdf.ln(10)
+
+            # Room Charges
+            for room in guest_data['rooms']:
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 10, f"Room: {room['number']}", 0, 1)
+                pdf.cell(0, 10, f"Account Title: Room Fee ({room['number']})", 0, 1)
+                pdf.set_font("Arial", "", 8)
+                
+                # Table header
+                headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Misc. Charges', 'LT', 'ST', 'Dr.', 'Cr.', 'Bal.']
+                col_widths = [20, 20, 30, 20, 15, 15, 25, 15, 15, 15, 15, 20]
+                for i, header in enumerate(headers):
+                    pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
+                pdf.ln()
+
+                # Table content
+                for charge in room['charges']:
+                    pdf.cell(20, 7, charge['date'], 1)
+                    pdf.cell(20, 7, charge['reference_number'], 1)
+                    pdf.cell(30, 7, charge['description'], 1)
+                    pdf.cell(20, 7, f"{charge['base_charge']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['vat']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['discount']:.2f}", 1)
+                    pdf.cell(25, 7, f"{charge['misc_charges']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['lt']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['st']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['dr']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['cr']:.2f}", 1)
+                    pdf.cell(20, 7, f"{charge['balance']:.2f}", 1)
+                    pdf.ln()
+
+                pdf.set_font("Arial", "B", 10)
+                pdf.cell(185, 7, "Ending Balance:", 1)
+                pdf.cell(20, 7, f"{room['balance']:.2f}", 1)
+                pdf.ln(15)
+
+            # Venue Charges
+            for venue in guest_data['venues']:
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 10, f"Venue: {venue['name']}", 0, 1)
+                pdf.cell(0, 10, "Account Title: Venue Fee", 0, 1)
+                pdf.set_font("Arial", "", 8)
+                
+                # Table header
+                headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Misc. Charges', 'LT', 'ST', 'Dr.', 'Cr.', 'Bal.']
+                col_widths = [20, 20, 30, 20, 15, 15, 25, 15, 15, 15, 15, 20]
+                for i, header in enumerate(headers):
+                    pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
+                pdf.ln()
+
+                # Table content
+                for charge in venue['charges']:
+                    pdf.cell(20, 7, charge['date'], 1)
+                    pdf.cell(20, 7, charge['reference_number'], 1)
+                    pdf.cell(30, 7, charge['description'], 1)
+                    pdf.cell(20, 7, f"{charge['base_charge']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['vat']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['discount']:.2f}", 1)
+                    pdf.cell(25, 7, f"{charge['misc_charges']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['lt']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['st']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['dr']:.2f}", 1)
+                    pdf.cell(15, 7, f"{charge['cr']:.2f}", 1)
+                    pdf.cell(20, 7, f"{charge['balance']:.2f}", 1)
+                    pdf.ln()
+
+                pdf.set_font("Arial", "B", 10)
+                pdf.cell(185, 7, "Ending Balance:", 1)
+                pdf.cell(20, 7, f"{venue['balance']:.2f}", 1)
+                pdf.ln(15)
+
+            # Total Balance
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(185, 10, "Total Balance:", 0)
+            pdf.cell(20, 10, f"{guest_data['total_balance']:.2f}", 0)
+
+            pdf_path = os.path.join(current_app.root_path, f"guest_folio_{guest_data['folio_number']}.pdf")
+            pdf.output(pdf_path)
+
+            @after_this_request
+            def remove_file(response):
+                try:
+                    os.remove(pdf_path)
+                    logger.info(f"Temporary PDF file removed: {pdf_path}")
+                except Exception as error:
+                    logger.error(f"Error removing temporary PDF file: {error}")
+                return response
+
+            logger.info(f"PDF generated successfully: {pdf_path}")
+            return send_file(pdf_path, as_attachment=True, mimetype='application/pdf')
 
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        print("Traceback:")
-        print(traceback.format_exc())
+        logger.error(f"An error occurred: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
+
+

@@ -27,6 +27,7 @@ from definedFunctions.apiMailer import send_email_confirmation
 from definedFunctions.apiHeroContents import api_everythingCard
 from definedFunctions.apiDashboardData import get_dashboard_data
 from defaultValues import rooms, roomTypes, venues
+from definedFunctions.scheduler import init_cleaning_scheduler
 
 app = Flask(__name__)
 CORS(app)
@@ -99,7 +100,7 @@ app.add_url_rule('/api/notifications/markRead', 'mark_Read_Notification', mark_R
 # POST methods
 app.add_url_rule('/api/insertDiscount', 'insert_discount', insert_discounts, methods=['POST'])
 app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
-app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', cross_origin(generate_pdf_route), methods=['POST'])
+app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', cross_origin()(generate_pdf_route), methods=['POST'])
 app.add_url_rule('/api/add-venue-room', 'create_venue_room', create_venue_room, methods=['POST'])
 app.add_url_rule('/api/discountAdd', 'add_discount', add_discount, methods=['POST'])
 app.add_url_rule('/api/addFee', 'add_fee', add_fee, methods=['POST'])
@@ -121,6 +122,7 @@ app.add_url_rule('/api/updateFee/<int:id>', 'update_fee' , update_fee, methods=[
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        init_cleaning_scheduler(app)
         existing_room_types = db.session.query(RoomType).all()
         if not existing_room_types:
             db.session.add_all(roomTypes)

@@ -146,13 +146,20 @@ def get_calendar_reservations(date):
         # Query room reservations
         room_reservations = RoomReservation.query.filter(
             RoomReservation.room_reservation_booking_date_start <= target_date,
-            RoomReservation.room_reservation_booking_date_end >= target_date
+            RoomReservation.room_reservation_booking_date_end >= target_date,
+            RoomReservation.room_reservation_status.in_(
+                ["waiting", "ready", "onUse", "cancelled", "onCleaning"]
+            )
+
         ).all()
         
         # Query venue reservations
         venue_reservations = VenueReservation.query.filter(
             VenueReservation.venue_reservation_booking_date_start <= target_date,
-            VenueReservation.venue_reservation_booking_date_end >= target_date
+            VenueReservation.venue_reservation_booking_date_end >= target_date,
+            VenueReservation.venue_reservation_status.in_(
+                ["waiting", "ready", "onUse", "cancelled", "onCleaning"]
+            )
         ).all()
         
         calendar_data = []

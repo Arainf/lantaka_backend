@@ -12,8 +12,11 @@ def send_email_confirmation(guest, receipt_id, reservation_details, reservation_
     subject = "Reservation Confirmation"
     
     def format_date(date_str):
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-        return date_obj.strftime("%B %d, %Y")
+        try:
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            return date_obj.strftime("%B %d, %Y")
+        except ValueError:
+            return date_str  # Return the original string if parsing fails
 
     body = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -32,28 +35,48 @@ def send_email_confirmation(guest, receipt_id, reservation_details, reservation_
                     <li>📱 Phone: {guest.guest_phone}</li>
                 </ul>
             </div>
-            {'<div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">' +
-             '<h3 style="color: #2e7d32; margin-top: 0;">Room Reservation</h3>' +
-             '<ul style="list-style: none; padding-left: 0;">' +
-             f'<li>📅 Check-in: {format_date(reservation_details["room"]["start_date"])}</li>' +
-             f'<li>📅 Check-out: {format_date(reservation_details["room"]["end_date"])}</li>' +
-             '<li>🏠 Rooms:</li>' +
-             ''.join([f'<li style="margin-left: 20px;">- {room["category"].capitalize()}: {room["count"]} room(s)</li>' for room in reservation_details["room"]["rooms"]]) +
-             '</ul>' +
-             '</div>' if reservation_type in ['room', 'both'] else ''}
-            {'<div style="background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0;">' +
-             '<h3 style="color: #e65100; margin-top: 0;">Venue Reservation</h3>' +
-             '<ul style="list-style: none; padding-left: 0;">' +
-             f'<li>📅 Start Date: {format_date(reservation_details["venue"]["start_date"])}</li>' +
-             f'<li>📅 End Date: {format_date(reservation_details["venue"]["end_date"])}</li>' +
-             f'<li>🏛 Venue: {reservation_details["venue"]["name"]}</li>' +
-             '</ul>' +
-             '</div>' if reservation_type in ['venue', 'both'] else ''}
-            {'<div style="background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0;">' + 
-             '<h3 style="color: #e65100; margin-top: 0;">Payment Information</h3>' +
-             '<p>To secure your reservation, please pay the reservation fee of <strong>200 pesos</strong>.</p>' +
-             '<p>Payment can be made at our front desk during office hours.</p>' +
-             '</div>' if guest.guest_type == 'external' else ''}
+    """
+
+    if reservation_type in ['room', 'both'] and 'room' in reservation_details:
+        room_details = reservation_details['room']
+        body += f"""
+            <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="color: #2e7d32; margin-top: 0;">Room Reservation</h3>
+                <ul style="list-style: none; padding-left: 0;">
+                    <li>📅 Check-in: {format_date(room_details.get('start_date', 'N/A'))}</li>
+                    <li>📅 Check-out: {format_date(room_details.get('end_date', 'N/A'))}</li>
+                    <li>🏠 Rooms:</li>
+        """
+        for room in room_details.get('rooms', []):
+            body += f'<li style="margin-left: 20px;">- {room.get("category", "").capitalize()}: {room.get("count", 0)} room(s)</li>'
+        body += """
+                </ul>
+            </div>
+        """
+
+    if reservation_type in ['venue', 'both'] and 'venue' in reservation_details:
+        venue_details = reservation_details['venue']
+        body += f"""
+            <div style="background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="color: #e65100; margin-top: 0;">Venue Reservation</h3>
+                <ul style="list-style: none; padding-left: 0;">
+                    <li>📅 Start Date: {format_date(venue_details.get('start_date', 'N/A'))}</li>
+                    <li>📅 End Date: {format_date(venue_details.get('end_date', 'N/A'))}</li>
+                    <li>🏛 Venue: {venue_details.get('name', 'N/A')}</li>
+                </ul>
+            </div>
+        """
+
+    if guest.guest_type == 'external':
+        body += """
+            <div style="background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="color: #e65100; margin-top: 0;">Payment Information</h3>
+                <p>To secure your reservation, please pay the reservation fee of <strong>200 pesos</strong>.</p>
+                <p>Payment can be made at our front desk during office hours.</p>
+            </div>
+        """
+
+    body += """
             <p>If you have any questions or need to make changes to your reservation, please don't hesitate to contact us. We're here to ensure you have a comfortable and enjoyable stay.</p>
             <p style="margin-top: 30px;">
                 Best regards,<br> 
@@ -89,13 +112,16 @@ def send_email_confirmation(guest, receipt_id, reservation_details, reservation_
 def generate_pdf_confirmation(guest, receipt_id, reservation_details, reservation_type):
     class PDF(FPDF):
         def header(self):
-            self.set_font('Arial', 'B', 20)
-            self.cell(0, 10, 'Lantaka Reservation System', 0, 1, 'C')
+            self.image('DefaultAssets\header.png', 10, 8, 33)  # Add your logo
+            self.set_font('Arial', 'B', 15)
+            self.set_text_color(0, 51, 102)
+            self.cell(0, 10, 'Lantaka Reservation System', 0, 0, 'R')
             self.ln(20)
 
         def footer(self):
             self.set_y(-15)
             self.set_font('Arial', 'I', 8)
+            self.set_text_color(128)
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
     pdf = PDF()
@@ -103,68 +129,76 @@ def generate_pdf_confirmation(guest, receipt_id, reservation_details, reservatio
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    pdf.set_draw_color(0, 51, 102)
-    pdf.set_fill_color(230, 230, 250)
+    # Colors
+    blue = (0, 51, 102)
+    light_blue = (230, 240, 250)
+    gray = (128, 128, 128)
 
+    def add_section(title, content):
+        pdf.set_draw_color(*blue)
+        pdf.set_fill_color(*light_blue)
+        pdf.set_text_color(*blue)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, title, 1, 1, 'L', 1)
+        pdf.set_text_color(*gray)
+        pdf.set_font("Arial", "", 10)
+        pdf.multi_cell(0, 5, content, 'LR', 'L')
+        pdf.cell(0, 1, '', 'LRB', 1, 'L')
+        pdf.ln(5)
+
+    # Title
     pdf.set_font("Arial", "B", 16)
+    pdf.set_text_color(*blue)
     pdf.cell(0, 10, "Reservation Confirmation", 0, 1, 'C')
-    pdf.ln(10)
+    pdf.ln(5)
 
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Guest Details", 1, 1, 'L', 1)
-    pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 8, f"""
+    # Guest Details
+    guest_details = f"""
 Name: {guest.guest_fName} {guest.guest_lName}
 Email: {guest.guest_email}
 Phone: {guest.guest_phone}
 Receipt ID: {receipt_id}
-    """, 1, 'L')
-    pdf.ln(5)
+    """
+    add_section("Guest Details", guest_details.strip())
 
+    # Room Reservation
     if reservation_type in ['room', 'both']:
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Room Reservation", 1, 1, 'L', 1)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, f"""
+        room_details = f"""
 Check-in: {reservation_details['room']['start_date']}
 Check-out: {reservation_details['room']['end_date']}
-        """, 1, 'L')
-        pdf.cell(0, 8, "Rooms:", 1, 1, 'L')
-        for room in reservation_details['room']['rooms']:
-            pdf.cell(0, 8, f"- {room['category'].capitalize()}: {room['count']} room(s)", 1, 1, 'L')
-        pdf.ln(5)
 
+Rooms:
+"""
+        for room in reservation_details['room']['rooms']:
+            room_details += f"- {room['category'].capitalize()}: {room['count']} room(s)\n"
+        add_section("Room Reservation", room_details.strip())
+
+    # Venue Reservation
     if reservation_type in ['venue', 'both']:
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Venue Reservation", 1, 1, 'L', 1)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, f"""
+        venue_details = f"""
 Start Date: {reservation_details['venue']['start_date']}
 End Date: {reservation_details['venue']['end_date']}
 Venue: {reservation_details['venue']['name']}
-        """, 1, 'L')
-        pdf.ln(5)
+        """
+        add_section("Venue Reservation", venue_details.strip())
 
+    # Payment Information
     if guest.guest_type == 'external':
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Payment Information", 1, 1, 'L', 1)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, """
+        payment_info = """
 To secure your reservation, please pay the reservation fee of 200 pesos.
 Payment can be made at our front desk during office hours.
-        """, 1, 'L')
-        pdf.ln(5)
+        """
+        add_section("Payment Information", payment_info.strip())
 
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Terms and Conditions", 1, 1, 'L', 1)
-    pdf.set_font("Arial", "", 10)
-    pdf.multi_cell(0, 5, """
+    # Terms and Conditions
+    terms = """
 1. Check-in time is 2:00 PM and check-out time is 12:00 PM.
 2. Cancellations must be made at least 48 hours before the check-in date for a full refund.
 3. Pets are not allowed in the premises.
 4. Smoking is prohibited in all indoor areas.
 5. The guest is liable for any damage to the property during their stay.
-    """, 1, 'L')
+    """
+    add_section("Terms and Conditions", terms.strip())
 
     pdf_dir = "offline_confirmations"
     os.makedirs(pdf_dir, exist_ok=True)
