@@ -7,7 +7,7 @@ def get_guests():
         guestsHolder = []
         for guest in guests:
             guest_data = {
-                "guest_ id": guest.guest_id,
+                "guest_id": guest.guest_id,
                 "guest_client": guest.guest_client,
                 "guest_type": guest.guest_type,
                 "guest_fName": guest.guest_fName,

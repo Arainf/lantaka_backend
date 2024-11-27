@@ -1,5 +1,5 @@
 from flask import jsonify, request
-from model import AdditionalFees, db  # Make sure to import `db` for session handling
+from model import AdditionalFees, db , GuestDetails, Account # Make sure to import `db` for session handling
 from sqlalchemy.exc import SQLAlchemyError
 
 def get_AdditionalFees():
@@ -71,6 +71,31 @@ def delete_fee(id):
         db.session.delete(fee)
         db.session.commit()
         return jsonify({"message": "Fee deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+def delete_guests(id):
+    try:
+        guest = GuestDetails.query.get(id)
+        if not guest:
+            return jsonify({"error": "Guest not found"}), 404
+        
+        db.session.delete(guest)
+        db.session.commit()
+        return jsonify({"message": "Guest deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+def delete_account(id):
+    try:
+        account = Account.query.get(id)
+        if not account:
+            return jsonify({"error": "Account not found"}), 404
+        
+        db.session.delete(account)
+        db.session.commit()
+        return jsonify({"message": "Account deleted successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     

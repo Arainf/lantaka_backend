@@ -4,13 +4,13 @@ from flask_mail import Mail
 from model import db, Room, RoomType, Venue, VenueReservation
 from schemas import ma
 from utils import search_guests
-from definedFunctions.auth import register, login
+from definedFunctions.auth import register, login, simple_login
 from definedFunctions.reservations import submit_reservation, update_reservation_status, get_reservation_calendar
 from definedFunctions.data_retrieval import get_venue_data, get_room_data, get_reservations, api_everythingAvailable, get_calendar_reservations
 from definedFunctions.apiAccountModel import get_accounts
 from definedFunctions.apiGuestModel import get_guests
 from definedFunctions.apiDiscounts import get_discounts, insert_discounts
-from definedFunctions.apiAdditionalFees import get_AdditionalFees, insert_AdditionalFees, get_additional_fees, add_fee, update_fee, delete_fee
+from definedFunctions.apiAdditionalFees import get_AdditionalFees, insert_AdditionalFees, get_additional_fees, add_fee, update_fee, delete_fee, delete_guests, delete_account
 from definedFunctions.apiReservations import get_Reservations, get_waiting_reservations, get_ready_reservations, get_onUse_reservations
 from definedFunctions.apiPrice import get_Price
 from definedFunctions.apiDeleteGroupedReservation import delete_reservations
@@ -62,6 +62,7 @@ def dashboard_data():
 # Route registrations
 app.add_url_rule('/register', 'register', register, methods=['POST'])
 app.add_url_rule('/login', 'login', login, methods=['POST'])
+app.add_url_rule('/deletelogin', 'simple_login', simple_login, methods=['POST'])
 app.add_url_rule('/api/submitReservation', 'submit_reservation', submit_reservation, methods=['POST'])
 app.add_url_rule('/api/reservationCalendar/<int:event_id>', 'update_reservation_status', update_reservation_status, methods=['PUT'])
 app.add_url_rule('/api/venueData', 'get_venue_data', get_venue_data, methods=['GET'])
@@ -110,6 +111,8 @@ app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reser
 app.add_url_rule('/api/venue-room/<string:item_id>', 'delete_venue_room', delete_venue_room, methods=['DELETE'])
 app.add_url_rule('/api/discountDelete', 'delete_discount', delete_discount, methods=['DELETE'])
 app.add_url_rule('/api/deleteFee/<int:id>', 'delete_fee', delete_fee, methods=['DELETE'])
+app.add_url_rule('/api/deleteGuests/<int:id>', 'delete_guests', delete_guests, methods=['DELETE'])
+app.add_url_rule('/api/deleteAccount/<int:id>', 'delete_account', delete_account, methods=['DELETE'])
 
 # PUT methods
 app.add_url_rule('/api/change_status', 'change_status' , change_status, methods=['PUT'])

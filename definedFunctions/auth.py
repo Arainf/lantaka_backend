@@ -71,9 +71,26 @@ def login():
             "dob": user.account_dob.strftime('%Y-%m-%d'),  # Format date
             "gender": user.account_gender,
             "status": user.account_status,
-            "last_login": user.account_last_login
+            "last_login": user.account_last_login,
+            "username": user.account_username
         }), 200 
     else:
         return jsonify({"message": "Invalid credentials"}), 401
 
 
+def simple_login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    # Validate input
+    if not username or not password:
+        return jsonify({"success": False, "message": "Username and password are required"}), 400
+
+    # Find the user by username
+    user = Account.query.filter_by(account_username=username).first()
+
+    if user and bcrypt.checkpw(password.encode('utf-8'), user.account_password.encode('utf-8')):
+        return jsonify({"success": True, "message": "Password verified"}), 200
+    else:
+        return jsonify({"success": False, "message": "Invalid username or password"}), 401
