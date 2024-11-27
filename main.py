@@ -26,6 +26,7 @@ from definedFunctions.apiNotification import mark_Read_Notification, create_Noti
 from definedFunctions.apiMailer import send_email_confirmation
 from definedFunctions.apiHeroContents import api_everythingCard
 from definedFunctions.apiDashboardData import get_dashboard_data
+from definedFunctions.updateAccounts import update_account
 from defaultValues import rooms, roomTypes, venues
 from definedFunctions.scheduler import init_cleaning_scheduler
 
@@ -121,6 +122,7 @@ app.add_url_rule('/api/venue-room/<string:item_id>', 'update_venue_room' , updat
 app.add_url_rule('/api/discountEdit', 'edit_discount' , edit_discount, methods=['PUT'])
 app.add_url_rule('/api/roomTypes/<int:id>', 'update_room_type' , update_room_type, methods=['PUT'])
 app.add_url_rule('/api/updateFee/<int:id>', 'update_fee' , update_fee, methods=['PUT'])
+app.add_url_rule('/api/update_account', 'update_account' , update_account, methods=['PUT'])
 
 if __name__ == '__main__':
     with app.app_context():
