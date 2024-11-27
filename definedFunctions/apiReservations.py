@@ -1,5 +1,5 @@
 from flask import jsonify
-from model import Account, RoomReservation, VenueReservation, Receipt, GuestDetails, Room, RoomType, db
+from model import Account, RoomReservation, VenueReservation, Receipt, GuestDetails, Room, RoomType, db, AdditionalFees
 from datetime import datetime
 
 def get_Reservations():
@@ -33,6 +33,7 @@ def get_Reservations():
         if not (guest and account and receipt and room and room_type):
             continue  # Skip if essential data is missing
 
+        # Get discounts
         receipt_with_discount_holder = [
             {
                 "discount_id": discount.discount_id,
@@ -42,8 +43,19 @@ def get_Reservations():
             for discount in getattr(receipt, 'discounts', [])  # Safely handle relationship
         ]
 
+        # Get additional fees
+        receipt_with_additional_fee_holder = [
+            {
+                "additional_fee_id": fee.additional_fee_id,
+                "additional_fee_name": fee.additional_fee_name,
+                "additional_fee_amount": fee.additional_fee_amount,
+            }
+            for fee in getattr(receipt, 'additional_fees', [])  # Safely handle relationship
+        ]
+
         reservation_data = {
             "reservation_id": reservation.room_reservation_id,
+            "receipt_id": receipt.receipt_id,
             "room_type": room_type.room_type_name,
             "guest_id": guest.guest_id,
             "guest_type": guest.guest_type,
@@ -55,6 +67,7 @@ def get_Reservations():
             "receipt_initial_total": receipt.receipt_initial_total,
             "receipt_total_amount": receipt.receipt_total_amount,
             "receipt_discounts": receipt_with_discount_holder,
+            "receipt_additional_fees": receipt_with_additional_fee_holder,
             "check_in_date": check_in_datetime.strftime(date_time_format),
             "check_out_date": check_out_datetime.strftime(date_time_format),
             "status": reservation.room_reservation_status,
@@ -81,6 +94,7 @@ def get_Reservations():
         if not (guest and account and receipt):
             continue  # Skip if essential data is missing
 
+        # Get discounts
         receipt_with_discount_holder = [
             {
                 "discount_id": discount.discount_id,
@@ -90,8 +104,19 @@ def get_Reservations():
             for discount in getattr(receipt, 'discounts', [])  # Safely handle relationship
         ]
 
+        # Get additional fees
+        receipt_with_additional_fee_holder = [
+            {
+                "additional_fee_id": fee.additional_fee_id,
+                "additional_fee_name": fee.additional_fee_name,
+                "additional_fee_amount": fee.additional_fee_amount,
+            }
+            for fee in getattr(receipt, 'additional_fees', [])  # Safely handle relationship
+        ]
+
         reservation_data = {
             "reservation_id": reservation.venue_reservation_id,
+            "receipt_id": receipt.receipt_id,
             "guest_id": guest.guest_id,
             "guest_type": guest.guest_type,
             "reservation": reservation.venue_id,
@@ -102,6 +127,7 @@ def get_Reservations():
             "receipt_initial_total": receipt.receipt_initial_total,
             "receipt_total_amount": receipt.receipt_total_amount,
             "receipt_discounts": receipt_with_discount_holder,
+            "receipt_additional_fees": receipt_with_additional_fee_holder,
             "check_in_date": check_in_datetime.strftime(date_time_format),
             "check_out_date": check_out_datetime.strftime(date_time_format),
             "status": reservation.venue_reservation_status,
@@ -112,6 +138,9 @@ def get_Reservations():
         reservations_holder.append(reservation_data)
 
     return jsonify(reservations_holder), 200
+
+
+
 
 
 def get_waiting_reservations():

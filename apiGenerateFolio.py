@@ -30,6 +30,9 @@ def generate_pdf_route():
         guest_id = data.get('guest_id')
         reservation_ids = data.get('reservation_ids')
         reservation_type = data.get('type')
+        discounts = data.get('discounts', [])
+        additional_fees = data.get('addFees', [])
+        base_price = data.get('basePrice')
 
         if not reservation_ids:
             logger.error("No reservation IDs provided")
@@ -82,6 +85,9 @@ def generate_pdf_route():
                 'payment_mode': "Bill to Finance",
                 'rooms': [],
                 'venues': [],
+                'discounts': discounts,
+                'additional_fees': additional_fees,
+                'subtotal': receipt.receipt_initial_total,
                 'total_balance': receipt.receipt_total_amount,
                 'folio_number': f"{guest.guest_id:03d}",
                 'folio_status': 'Active',
@@ -90,10 +96,14 @@ def generate_pdf_route():
                 'check_out_date': ''
             }
 
+            room_total = 0
+            venue_total = 0
+
+            # Process room reservations
             for room_res in room_reservations:
                 room = Room.query.get(room_res.room_id)
                 room_type = RoomType.query.get(room.room_type_id)
-                
+
                 if not guest_data['check_in_date']:
                     guest_data['check_in_date'] = room_res.room_reservation_booking_date_start.strftime('%m.%d.%y')
                     guest_data['check_out_date'] = room_res.room_reservation_booking_date_end.strftime('%m.%d.%y')
@@ -107,14 +117,11 @@ def generate_pdf_route():
                     date = room_res.room_reservation_booking_date_start + timedelta(days=i)
                     charge = {
                         'date': date.strftime('%m.%d.%y'),
-                        'reference_number': f'Room Fee {i+1}',
+                        'reference_number': f'Room Fee ',
                         'description': 'Room Fee',
                         'base_charge': daily_rate,
                         'vat': 0,
                         'discount': 0,
-                        'misc_charges': 0,
-                        'lt': 0,
-                        'st': 0,
                         'dr': daily_rate,
                         'cr': 0,
                         'balance': daily_rate * (i + 1)
@@ -122,15 +129,18 @@ def generate_pdf_route():
                     room_charges.append(charge)
                     room_balance += daily_rate
 
+                room_total += room_balance  # Accumulate room total
+
                 guest_data['rooms'].append({
                     'number': room.room_name,
                     'charges': room_charges,
                     'balance': room_balance
                 })
 
+            # Process venue reservations
             for venue_res in venue_reservations:
                 venue = Venue.query.get(venue_res.venue_id)
-                
+
                 if not guest_data['check_in_date']:
                     guest_data['check_in_date'] = venue_res.venue_reservation_booking_date_start.strftime('%m.%d.%y')
                     guest_data['check_out_date'] = venue_res.venue_reservation_booking_date_end.strftime('%m.%d.%y')
@@ -144,14 +154,11 @@ def generate_pdf_route():
                     date = venue_res.venue_reservation_booking_date_start + timedelta(days=i)
                     charge = {
                         'date': date.strftime('%m.%d.%y'),
-                        'reference_number': f'Venue Fee {i+1}',
+                        'reference_number': f'Venue Fee',
                         'description': 'Venue Fee',
                         'base_charge': daily_rate,
                         'vat': 0,
                         'discount': 0,
-                        'misc_charges': 0,
-                        'lt': 0,
-                        'st': 0,
                         'dr': daily_rate,
                         'cr': 0,
                         'balance': daily_rate * (i + 1)
@@ -159,13 +166,13 @@ def generate_pdf_route():
                     venue_charges.append(charge)
                     venue_balance += daily_rate
 
+                venue_total += venue_balance  # Accumulate venue total
+
                 guest_data['venues'].append({
                     'name': venue.venue_name,
                     'charges': venue_charges,
                     'balance': venue_balance
                 })
-
-            guest_data['total_balance'] = sum(room['balance'] for room in guest_data['rooms']) + sum(venue['balance'] for venue in guest_data['venues'])
 
             pdf = PDF()
             pdf.add_page()
@@ -190,13 +197,13 @@ def generate_pdf_route():
             # Room Charges
             for room in guest_data['rooms']:
                 pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 10, f"Room: {room['number']}", 0, 1)
-                pdf.cell(0, 10, f"Account Title: Room Fee ({room['number']})", 0, 1)
-                pdf.set_font("Arial", "", 8)
-                
+                pdf.cell(0, 10, f"{room['number']}", 0, 1)
+                pdf.cell(0, 10, f"Account Title: Room Fee", 0, 1)
+                pdf.set_font("Arial", "", 10)
+
                 # Table header
-                headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Misc. Charges', 'LT', 'ST', 'Dr.', 'Cr.', 'Bal.']
-                col_widths = [20, 20, 30, 20, 15, 15, 25, 15, 15, 15, 15, 20]
+                headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Dr.', 'Cr.', 'Bal.']
+                col_widths = [20, 20, 30, 20, 15, 15, 15, 15, 20 ]
                 for i, header in enumerate(headers):
                     pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
                 pdf.ln()
@@ -209,16 +216,13 @@ def generate_pdf_route():
                     pdf.cell(20, 7, f"{charge['base_charge']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['vat']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['discount']:.2f}", 1)
-                    pdf.cell(25, 7, f"{charge['misc_charges']:.2f}", 1)
-                    pdf.cell(15, 7, f"{charge['lt']:.2f}", 1)
-                    pdf.cell(15, 7, f"{charge['st']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['dr']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['cr']:.2f}", 1)
                     pdf.cell(20, 7, f"{charge['balance']:.2f}", 1)
                     pdf.ln()
 
                 pdf.set_font("Arial", "B", 10)
-                pdf.cell(185, 7, "Ending Balance:", 1)
+                pdf.cell(150, 7, "Ending Balance:", 1)
                 pdf.cell(20, 7, f"{room['balance']:.2f}", 1)
                 pdf.ln(15)
 
@@ -227,11 +231,11 @@ def generate_pdf_route():
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(0, 10, f"Venue: {venue['name']}", 0, 1)
                 pdf.cell(0, 10, "Account Title: Venue Fee", 0, 1)
-                pdf.set_font("Arial", "", 8)
-                
+                pdf.set_font("Arial", "", 10)
+
                 # Table header
-                headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Misc. Charges', 'LT', 'ST', 'Dr.', 'Cr.', 'Bal.']
-                col_widths = [20, 20, 30, 20, 15, 15, 25, 15, 15, 15, 15, 20]
+                headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Dr.', 'Cr.', 'Bal.']
+                col_widths = [20, 20, 30, 20, 15, 15, 15, 15, 20 ]
                 for i, header in enumerate(headers):
                     pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
                 pdf.ln()
@@ -244,23 +248,60 @@ def generate_pdf_route():
                     pdf.cell(20, 7, f"{charge['base_charge']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['vat']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['discount']:.2f}", 1)
-                    pdf.cell(25, 7, f"{charge['misc_charges']:.2f}", 1)
-                    pdf.cell(15, 7, f"{charge['lt']:.2f}", 1)
-                    pdf.cell(15, 7, f"{charge['st']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['dr']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['cr']:.2f}", 1)
                     pdf.cell(20, 7, f"{charge['balance']:.2f}", 1)
                     pdf.ln()
 
                 pdf.set_font("Arial", "B", 10)
-                pdf.cell(185, 7, "Ending Balance:", 1)
+                pdf.cell(150, 7, "Ending Balance:", 1)
                 pdf.cell(20, 7, f"{venue['balance']:.2f}", 1)
                 pdf.ln(15)
 
+            # Discounts Section
+            if discounts:
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 10, "Discounts", 0, 1)
+                pdf.set_font("Arial", "", 10)
+                pdf.cell(0, 10, "Description", 0, 0)
+                pdf.cell(20, 10, "Amount", 0, 1)
+
+                for discount in discounts:
+                    pdf.cell( 0, 10, discount['description'], 0, 0)
+                    pdf.cell(20, 10, f"{discount['amount']:.2f}", 0, 1)
+
+                pdf.ln(10)
+
+            # Additional Fees Section
+            if additional_fees:
+                pdf.ln(10)
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 10, "Additional Fees", 0, 1)
+                pdf.set_font("Arial", "", 10)
+                
+                headers = ['Description', 'Amount']
+                widths = [150, 35]
+                
+                for i, header in enumerate(headers):
+                    pdf.cell(widths[i], 7, header, 1, 0, 'C')
+                pdf.ln()
+
+                total_additional_fees = 0
+                for fee in additional_fees:
+                    pdf.cell(150, 7, fee['additional_fee_name'], 1)
+                    pdf.cell(35, 7, f"{fee['additional_fee_amount']:.2f}", 1)
+                    pdf.ln()
+                    total_additional_fees += fee['additional_fee_amount']
+
+            # Total Balance Calculation
+            total_discount = sum((discount['discount_percentage'] * base_price / 100) for discount in discounts)
+            total_additional_fees = sum(fee['additional_fee_amount'] for fee in additional_fees)
+            final_total = guest_data['total_balance'] - total_discount + total_additional_fees
+
             # Total Balance
             pdf.set_font("Arial", "B", 12)
-            pdf.cell(185, 10, "Total Balance:", 0)
-            pdf.cell(20, 10, f"{guest_data['total_balance']:.2f}", 0)
+            pdf.cell(165, 10, "Total Balance:", 0)
+            pdf.cell(20, 10, f"{final_total:.2f}", 0)
 
             pdf_path = os.path.join(current_app.root_path, f"guest_folio_{guest_data['folio_number']}.pdf")
             pdf.output(pdf_path)
@@ -281,5 +322,3 @@ def generate_pdf_route():
         logger.error(f"An error occurred: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
-
-

@@ -451,7 +451,6 @@ def export_pdf(dashboard_data):
         )
         elements = []
 
-        # Define styles
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             'CustomTitle',
@@ -484,12 +483,10 @@ def export_pdf(dashboard_data):
             textColor=colors.HexColor('#4a5568')
         )
 
-        # Title and Introduction
         elements.append(Paragraph("Hotel Performance Dashboard Report", title_style))
         elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", subheader_style))
         elements.append(Spacer(1, 20))
 
-        # Executive Summary
         elements.append(Paragraph("Executive Summary", header_style))
         summary_text = f"""
         This report provides a comprehensive analysis of the hotel's performance metrics. 
@@ -501,7 +498,6 @@ def export_pdf(dashboard_data):
         elements.append(Paragraph(summary_text, body_style))
         elements.append(Spacer(1, 20))
 
-        # Performance Metrics
         elements.append(Paragraph("Key Performance Metrics", header_style))
         metrics_text = f"""
         The following metrics highlight the hotel's current performance status:
@@ -513,7 +509,6 @@ def export_pdf(dashboard_data):
         elements.append(Paragraph(metrics_text, body_style))
         elements.append(Spacer(1, 20))
 
-        # Detailed Metrics Table
         elements.append(Paragraph("Detailed Performance Analysis", header_style))
         summary_data = [
             ['Metric', 'Current Value', 'Change'],
@@ -542,10 +537,8 @@ def export_pdf(dashboard_data):
         elements.append(summary_table)
         elements.append(Spacer(1, 30))
 
-        # Visitor Distribution Chart
         elements.append(Paragraph("Visitor Distribution Analysis", header_style))
         
-        # Create pie chart for visitor distribution
         plt.figure(figsize=(6, 6))
         plt.clf()
         room_visitors = next(item['visitors'] for item in dashboard_data['visitorData'] if item['name'] == 'Room Guests')
@@ -558,12 +551,10 @@ def export_pdf(dashboard_data):
                 startangle=90)
         plt.title('Visitor Distribution (Room vs Venue)')
         
-        # Save the chart to a temporary buffer
         img_buffer = BytesIO()
         plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
         img_buffer.seek(0)
         
-        # Add the chart to the PDF
         visitor_chart = Image(img_buffer, width=4*inch, height=4*inch)
         elements.append(visitor_chart)
         
@@ -575,10 +566,8 @@ def export_pdf(dashboard_data):
         elements.append(Paragraph(visitor_analysis, body_style))
         elements.append(Spacer(1, 20))
 
-        # Room Type Performance Chart
         elements.append(Paragraph("Room Type Performance", header_style))
         
-        # Create bar chart for room type performance
         plt.figure(figsize=(8, 4))
         plt.clf()
         
@@ -601,19 +590,16 @@ def export_pdf(dashboard_data):
         ax1.set_xticks(x)
         ax1.set_xticklabels(room_types, rotation=45)
         
-        # Add legend
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
         
         plt.tight_layout()
         
-        # Save the chart to a temporary buffer
         img_buffer = BytesIO()
         plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
         img_buffer.seek(0)
         
-        # Add the chart to the PDF
         room_type_chart = Image(img_buffer, width=6*inch, height=3*inch)
         elements.append(room_type_chart)
         
@@ -624,10 +610,8 @@ def export_pdf(dashboard_data):
         elements.append(Paragraph(room_type_analysis, body_style))
         elements.append(Spacer(1, 20))
 
-        # Occupancy Trend
         elements.append(Paragraph("Occupancy Trend Analysis", header_style))
         
-        # Create line chart for occupancy trend
         plt.figure(figsize=(8, 4))
         plt.clf()
         
@@ -643,12 +627,10 @@ def export_pdf(dashboard_data):
         
         plt.tight_layout()
         
-        # Save the chart to a temporary buffer
         img_buffer = BytesIO()
         plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
         img_buffer.seek(0)
         
-        # Add the chart to the PDF
         occupancy_chart = Image(img_buffer, width=6*inch, height=3*inch)
         elements.append(occupancy_chart)
         
@@ -659,10 +641,8 @@ def export_pdf(dashboard_data):
         elements.append(Paragraph(occupancy_analysis, body_style))
         elements.append(Spacer(1, 20))
 
-        # Revenue Trend
         elements.append(Paragraph("Revenue Analysis", header_style))
         
-        # Create area chart for revenue trend
         plt.figure(figsize=(8, 4))
         plt.clf()
         
@@ -676,18 +656,19 @@ def export_pdf(dashboard_data):
         plt.ylabel('Revenue (PHP)')
         plt.xticks(rotation=45)
         plt.grid(True, linestyle='--', alpha=0.7)
-        
-        # Format y-axis to show currency
-        plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format_currency(x)))
-        
+
+        max_revenue = max(revenue) if revenue else 30000  # Use 30000 as default max if no data
+        plt.ylim(0, max_revenue * 1.2)  # Add 20% padding to the top
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format_currency(x)))
+        ax.yaxis.set_major_locator(plt.MaxNLocator(5))  # Show 5 ticks on y-axis
+
         plt.tight_layout()
         
-        # Save the chart to a temporary buffer
         img_buffer = BytesIO()
         plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
         img_buffer.seek(0)
         
-        # Add the chart to the PDF
         revenue_chart = Image(img_buffer, width=6*inch, height=3*inch)
         elements.append(revenue_chart)
         
@@ -698,7 +679,6 @@ def export_pdf(dashboard_data):
         """
         elements.append(Paragraph(revenue_analysis, body_style))
 
-        # Conclusion
         elements.append(Spacer(1, 20))
         elements.append(Paragraph("Conclusion", header_style))
         conclusion_text = f"""
@@ -711,7 +691,6 @@ def export_pdf(dashboard_data):
         """
         elements.append(Paragraph(conclusion_text, body_style))
 
-        # Build the PDF
         doc.build(elements)
         buffer.seek(0)
         
@@ -723,3 +702,4 @@ def export_pdf(dashboard_data):
     except Exception as e:
         logger.error(f"Error in export_pdf: {str(e)}", exc_info=True)
         return jsonify({"error": "Failed to generate PDF report"}), 500
+

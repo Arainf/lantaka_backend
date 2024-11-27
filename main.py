@@ -10,7 +10,7 @@ from definedFunctions.data_retrieval import get_venue_data, get_room_data, get_r
 from definedFunctions.apiAccountModel import get_accounts
 from definedFunctions.apiGuestModel import get_guests
 from definedFunctions.apiDiscounts import get_discounts, insert_discounts
-from definedFunctions.apiAdditionalFees import get_AdditionalFees, insert_AdditionalFees, get_additional_fees, add_fee, update_fee, delete_fee, delete_guests, delete_account
+from definedFunctions.apiAdditionalFees import get_AdditionalFees, insert_AdditionalFees, get_additional_fees, add_fee, update_fee, delete_fee, delete_guests, delete_account, test
 from definedFunctions.apiReservations import get_Reservations, get_waiting_reservations, get_ready_reservations, get_onUse_reservations
 from definedFunctions.apiPrice import get_Price
 from definedFunctions.apiDeleteGroupedReservation import delete_reservations
@@ -104,7 +104,7 @@ app.add_url_rule('/api/insertAdditionalFee', 'insert_AdditionalFees', insert_Add
 app.add_url_rule('/api/generate-pdf', 'generate_pdf_route', cross_origin()(generate_pdf_route), methods=['POST'])
 app.add_url_rule('/api/add-venue-room', 'create_venue_room', create_venue_room, methods=['POST'])
 app.add_url_rule('/api/discountAdd', 'add_discount', add_discount, methods=['POST'])
-app.add_url_rule('/api/addFee', 'add_fee', add_fee, methods=['POST'])
+app.add_url_rule('/api/addFee', 'insert_AdditionalFees', insert_AdditionalFees, methods=['POST'])
 
 # DELETE methods
 app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reservations, methods=['DELETE'])
