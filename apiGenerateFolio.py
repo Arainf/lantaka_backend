@@ -1,17 +1,30 @@
 from flask import Flask, request, jsonify, send_file, after_this_request, current_app
-from model import db, GuestDetails, RoomReservation, VenueReservation, Receipt, Room, Venue, RoomType
-from datetime import datetime, timedelta
 from fpdf import FPDF
 import os
 import traceback
 import logging
+from datetime import datetime, timedelta
+
+# Assuming these imports are correct for your project structure
+from model import db, GuestDetails, RoomReservation, VenueReservation, Receipt, Room, Venue, RoomType
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-class PDF(FPDF):
+
+class GuestFolioPDF(FPDF):
+    def __init__(self):
+        super().__init__()
+        self.logo_path = os.path.join(os.path.dirname(__file__), "DefaultAssets", "adzuseal.png")
+
+    def set_logo(self, path):
+        self.logo_path = path
+
     def header(self):
+        if os.path.exists(self.logo_path):
+            self.image(self.logo_path, 10, 8, 20)  # Adjust position and size as needed
+        
         self.set_font('Arial', 'B', 24)
         self.cell(0, 10, 'Lantaka Guest Folio', 0, 1, 'C')
         self.ln(10)
@@ -30,7 +43,7 @@ def generate_pdf_route():
         guest_id = data.get('guest_id')
         reservation_ids = data.get('reservation_ids')
         reservation_type = data.get('type')
-        discounts = data.get('discounts', [])
+        discounts_fees = data.get('adddiscounts', [])
         additional_fees = data.get('addFees', [])
         base_price = data.get('basePrice')
 
@@ -85,7 +98,7 @@ def generate_pdf_route():
                 'payment_mode': "Bill to Finance",
                 'rooms': [],
                 'venues': [],
-                'discounts': discounts,
+                'discounts_fees': discounts_fees,
                 'additional_fees': additional_fees,
                 'subtotal': receipt.receipt_initial_total,
                 'total_balance': receipt.receipt_total_amount,
@@ -98,6 +111,7 @@ def generate_pdf_route():
 
             room_total = 0
             venue_total = 0
+
 
             # Process room reservations
             for room_res in room_reservations:
@@ -174,7 +188,7 @@ def generate_pdf_route():
                     'balance': venue_balance
                 })
 
-            pdf = PDF()
+            pdf = GuestFolioPDF()
             pdf.add_page()
             pdf.set_auto_page_break(auto=True, margin=15)
 
@@ -197,13 +211,13 @@ def generate_pdf_route():
             # Room Charges
             for room in guest_data['rooms']:
                 pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 10, f"{room['number']}", 0, 1)
                 pdf.cell(0, 10, f"Account Title: Room Fee", 0, 1)
+                pdf.cell(0, 10, f"{room['number']}", 0, 1)
                 pdf.set_font("Arial", "", 10)
 
                 # Table header
                 headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Dr.', 'Cr.', 'Bal.']
-                col_widths = [20, 20, 30, 20, 15, 15, 15, 15, 20 ]
+                col_widths = [20, 20, 30, 25, 15, 15, 15, 15, 20]
                 for i, header in enumerate(headers):
                     pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
                 pdf.ln()
@@ -213,7 +227,7 @@ def generate_pdf_route():
                     pdf.cell(20, 7, charge['date'], 1)
                     pdf.cell(20, 7, charge['reference_number'], 1)
                     pdf.cell(30, 7, charge['description'], 1)
-                    pdf.cell(20, 7, f"{charge['base_charge']:.2f}", 1)
+                    pdf.cell(25, 7, f"{charge['base_charge']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['vat']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['discount']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['dr']:.2f}", 1)
@@ -222,20 +236,20 @@ def generate_pdf_route():
                     pdf.ln()
 
                 pdf.set_font("Arial", "B", 10)
-                pdf.cell(150, 7, "Ending Balance:", 1)
+                pdf.cell(155, 7, "Ending Balance:", 1)
                 pdf.cell(20, 7, f"{room['balance']:.2f}", 1)
                 pdf.ln(15)
 
             # Venue Charges
             for venue in guest_data['venues']:
                 pdf.set_font("Arial", "B", 12)
-                pdf.cell(0, 10, f"Venue: {venue['name']}", 0, 1)
                 pdf.cell(0, 10, "Account Title: Venue Fee", 0, 1)
+                pdf.cell(0, 10, f"Venue: {venue['name']}", 0, 1)
                 pdf.set_font("Arial", "", 10)
 
                 # Table header
                 headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Dr.', 'Cr.', 'Bal.']
-                col_widths = [20, 20, 30, 20, 15, 15, 15, 15, 20 ]
+                col_widths = [20, 20, 30, 25, 15, 15, 15, 15, 20]
                 for i, header in enumerate(headers):
                     pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
                 pdf.ln()
@@ -245,7 +259,7 @@ def generate_pdf_route():
                     pdf.cell(20, 7, charge['date'], 1)
                     pdf.cell(20, 7, charge['reference_number'], 1)
                     pdf.cell(30, 7, charge['description'], 1)
-                    pdf.cell(20, 7, f"{charge['base_charge']:.2f}", 1)
+                    pdf.cell(25, 7, f"{charge['base_charge']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['vat']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['discount']:.2f}", 1)
                     pdf.cell(15, 7, f"{charge['dr']:.2f}", 1)
@@ -254,21 +268,35 @@ def generate_pdf_route():
                     pdf.ln()
 
                 pdf.set_font("Arial", "B", 10)
-                pdf.cell(150, 7, "Ending Balance:", 1)
+                pdf.cell(155, 7, "Ending Balance:", 1)
                 pdf.cell(20, 7, f"{venue['balance']:.2f}", 1)
                 pdf.ln(15)
 
             # Discounts Section
-            if discounts:
+            # Discounts Section
+            if discounts_fees:
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(0, 10, "Discounts", 0, 1)
                 pdf.set_font("Arial", "", 10)
-                pdf.cell(0, 10, "Description", 0, 0)
-                pdf.cell(20, 10, "Amount", 0, 1)
+                
+                headers = ['Description', 'Percentage/Amount']
+                widths = [150, 35]
+                
+                # Headers for Discount section
+                for i, header in enumerate(headers):
+                    pdf.cell(widths[i], 7, header, 1, 0, 'C')
+                pdf.ln()
 
-                for discount in discounts:
-                    pdf.cell( 0, 10, discount['description'], 0, 0)
-                    pdf.cell(20, 10, f"{discount['amount']:.2f}", 0, 1)
+                total_discount = 0
+                for discount in discounts_fees:
+                    pdf.cell(150, 7, discount['discount_name'], 1)
+                    
+                    pdf.cell(35, 7, f"{discount['discount_percentage']}% /{discount['discount_percentage'] * base_price / 100}  ", 1, 0, 'C')
+                    pdf.ln()
+                    
+                    # Calculate total discount
+                    total_discount += discount['discount_percentage'] * base_price / 100
+                
 
                 pdf.ln(10)
 
@@ -278,10 +306,11 @@ def generate_pdf_route():
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(0, 10, "Additional Fees", 0, 1)
                 pdf.set_font("Arial", "", 10)
-                
+
                 headers = ['Description', 'Amount']
                 widths = [150, 35]
-                
+
+                # Headers for Additional Fees section
                 for i, header in enumerate(headers):
                     pdf.cell(widths[i], 7, header, 1, 0, 'C')
                 pdf.ln()
@@ -289,14 +318,25 @@ def generate_pdf_route():
                 total_additional_fees = 0
                 for fee in additional_fees:
                     pdf.cell(150, 7, fee['additional_fee_name'], 1)
-                    pdf.cell(35, 7, f"{fee['additional_fee_amount']:.2f}", 1)
+
+                    pdf.cell(35, 7, f"{fee['additional_fee_amount']:.2f}", 1, 0, 'C')
                     pdf.ln()
+
+                    # Calculate total additional fees
                     total_additional_fees += fee['additional_fee_amount']
 
             # Total Balance Calculation
-            total_discount = sum((discount['discount_percentage'] * base_price / 100) for discount in discounts)
+            total_discount = sum((discount['discount_percentage'] * base_price / 100) for discount in discounts_fees)
             total_additional_fees = sum(fee['additional_fee_amount'] for fee in additional_fees)
-            final_total = guest_data['total_balance'] - total_discount + total_additional_fees
+
+            # Print the calculated values for debugging
+            print(f"Total Discount: {total_discount}")
+            print(f"Total Additional Fees: {total_additional_fees}")
+
+            final_total = guest_data['total_balance']  
+            # Print the final total balance
+            print(f"Final Total Balance: {final_total}")
+
 
             # Total Balance
             pdf.set_font("Arial", "B", 12)

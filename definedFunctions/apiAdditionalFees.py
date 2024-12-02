@@ -43,6 +43,61 @@ def add_fee():
         return jsonify({"message": "Fee added successfully", "fee": new_fee.to_dict()}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+def delete_fee():
+    try:
+        # Parse incoming request data
+        data = request.json
+        logging.debug(f"Request data: {data}")
+
+        # Extract required fields from the request
+        receipt_id = data.get("receiptID")
+        fee_id = data.get("feeId")
+
+        # Validate the input
+        if not receipt_id or not fee_id:
+            logging.warning(f"Missing required fields: 'receiptID' or 'feeId'")
+            return jsonify({"error": "Missing required fields: 'receiptID' or 'feeId'"}), 400
+
+        # Retrieve the fee by ID
+        fee = AdditionalFees.query.get(fee_id)
+        if not fee:
+            logging.warning(f"Fee not found for ID: {fee_id}")
+            return jsonify({"error": "Fee not found"}), 404
+
+        # Ensure the fee is associated with the correct receipt
+        receipt = Receipt.query.get(receipt_id)
+        if not receipt or fee not in receipt.additional_fees:
+            logging.warning(f"Fee with ID {fee_id} is not associated with receipt ID: {receipt_id}")
+            return jsonify({"error": "Fee not associated with the specified receipt"}), 400
+
+        logging.debug(f"Fee found: {fee} | Associated receipt: {receipt}")
+
+        # Attempt to delete the fee
+        try:
+            db.session.delete(fee)
+            db.session.flush()  # Ensure deletion is staged before committing
+            logging.debug(f"Fee with ID {fee_id} staged for deletion")
+
+            # Update the receipt's total amount
+            old_total = receipt.receipt_total_amount
+            receipt.receipt_total_amount = old_total - fee.additional_fee_amount
+            logging.debug(f"Updated receipt total amount: {old_total} -> {receipt.receipt_total_amount}")
+
+            # Commit the transaction
+            db.session.commit()
+            logging.info(f"Successfully deleted fee with ID: {fee_id} and updated receipt total.")
+            return jsonify({"message": "Fee deleted successfully"}), 200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            logging.error(f"Database error during fee deletion: {str(e)}")
+            return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
+        return jsonify({"error": f"Invalid request: {str(e)}"}), 400
+
 
 
 def update_fee(id):
@@ -63,17 +118,7 @@ def update_fee(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-def delete_fee(id):
-    try:
-        fee = AdditionalFees.query.get(id)
-        if not fee:
-            return jsonify({"error": "Fee not found"}), 404
 
-        db.session.delete(fee)
-        db.session.commit()
-        return jsonify({"message": "Fee deleted successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
     
 
 def delete_guests(id):

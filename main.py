@@ -30,13 +30,14 @@ from definedFunctions.updateAccounts import update_account
 from defaultValues import rooms, roomTypes, venues
 from definedFunctions.scheduler import init_cleaning_scheduler
 
+
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/lantaka_database'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:lantaka@localhost/lantaka_database'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
+
 
 # Email configuration
 app.config.update(
@@ -111,7 +112,7 @@ app.add_url_rule('/api/addFee', 'insert_AdditionalFees', insert_AdditionalFees, 
 app.add_url_rule('/api/delete_reservations', 'delete_reservations', delete_reservations, methods=['DELETE'])
 app.add_url_rule('/api/venue-room/<string:item_id>', 'delete_venue_room', delete_venue_room, methods=['DELETE'])
 app.add_url_rule('/api/discountDelete', 'delete_discount', delete_discount, methods=['DELETE'])
-app.add_url_rule('/api/deleteFee/<int:id>', 'delete_fee', delete_fee, methods=['DELETE'])
+app.add_url_rule('/api/deleteFee', 'delete_fee', delete_fee, methods=['DELETE'])
 app.add_url_rule('/api/deleteGuests/<int:id>', 'delete_guests', delete_guests, methods=['DELETE'])
 app.add_url_rule('/api/deleteAccount/<int:id>', 'delete_account', delete_account, methods=['DELETE'])
 

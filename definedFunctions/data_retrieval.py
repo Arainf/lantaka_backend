@@ -3,6 +3,7 @@ from model import db, Venue, Room, RoomType, VenueReservation, RoomReservation, 
 from datetime import datetime
 from collections import defaultdict
 import base64
+import logging
 
 def api_everythingAvailable():
     rooms = Room.query.all()
@@ -138,69 +139,110 @@ def get_reservations():
 
     return jsonify(reservationsHolder), 200
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 def get_calendar_reservations(date):
     try:
+        logger.debug("Starting get_calendar_reservations with date: %s", date)
+        
         # Convert the date string to a datetime object
-        target_date = datetime.strptime(date, '%Y-%m-%d').date()
-        
-        # Query room reservations
-        room_reservations = RoomReservation.query.filter(
-            RoomReservation.room_reservation_booking_date_start <= target_date,
-            RoomReservation.room_reservation_booking_date_end >= target_date,
-            RoomReservation.room_reservation_status.in_(
-                ["waiting", "ready", "onUse", "cancelled", "onCleaning"]
-            )
+        try:
+            target_date = datetime.strptime(date, '%Y-%m-%d').date()
+            logger.debug("Parsed date: %s", target_date)
+        except ValueError as e:
+            logger.error("Date parsing error: %s", str(e))
+            return jsonify({"error": f"Invalid date format: {date}. Expected format is 'YYYY-MM-DD'."}), 400
 
-        ).all()
-        
+        # Query room reservations
+        try:
+            room_reservations = RoomReservation.query.filter(
+                RoomReservation.room_reservation_booking_date_start <= target_date,
+                RoomReservation.room_reservation_booking_date_end >= target_date,
+                RoomReservation.room_reservation_status.in_(
+                    ["waiting", "ready", "onUse", "cancelled", "onCleaning"]
+                )
+            ).all()
+            logger.debug("Found %d room reservations", len(room_reservations))
+        except Exception as e:
+            logger.error("Error querying room reservations: %s", str(e))
+            return jsonify({"error": "Error querying room reservations."}), 500
+
         # Query venue reservations
-        venue_reservations = VenueReservation.query.filter(
-            VenueReservation.venue_reservation_booking_date_start <= target_date,
-            VenueReservation.venue_reservation_booking_date_end >= target_date,
-            VenueReservation.venue_reservation_status.in_(
-                ["waiting", "ready", "onUse", "cancelled", "onCleaning"]
-            )
-        ).all()
-        
+        try:
+            venue_reservations = VenueReservation.query.filter(
+                VenueReservation.venue_reservation_booking_date_start <= target_date,
+                VenueReservation.venue_reservation_booking_date_end >= target_date,
+                VenueReservation.venue_reservation_status.in_(
+                    ["waiting", "ready", "onUse", "cancelled", "onCleaning"]
+                )
+            ).all()
+            logger.debug("Found %d venue reservations", len(venue_reservations))
+        except Exception as e:
+            logger.error("Error querying venue reservations: %s", str(e))
+            return jsonify({"error": "Error querying venue reservations."}), 500
+
         calendar_data = []
-        
+
         # Process room reservations
         for reservation in room_reservations:
-            guest = GuestDetails.query.filter_by(guest_id=reservation.guest_id).first()
-            account = Account.query.filter_by(account_id=reservation.account_id).first()
-            
-            calendar_data.append({
-                "checkIn": reservation.room_reservation_check_in_time.strftime('%H:%M:%S'),
-                "checkOut": reservation.room_reservation_check_out_time.strftime('%H:%M:%S'),
-                "dateEnd": reservation.room_reservation_booking_date_end.strftime('%Y-%m-%d'),
-                "dateStart": reservation.room_reservation_booking_date_start.strftime('%Y-%m-%d'),
-                "employee": f"{account.account_fName} {account.account_lName}",
-                "guests": f"{guest.guest_fName} {guest.guest_lName}",
-                "id": reservation.room_id,
-                "reservationid": reservation.room_reservation_id,
-                "status": reservation.room_reservation_status,
-                "type": "room"
-            })
-        
+            try:
+                guest = GuestDetails.query.filter_by(guest_id=reservation.guest_id).first()
+                account = Account.query.filter_by(account_id=reservation.account_id).first()
+
+                if guest and account:
+                    calendar_data.append({
+                        "checkIn": reservation.room_reservation_check_in_time.strftime('%H:%M:%S'),
+                        "checkOut": reservation.room_reservation_check_out_time.strftime('%H:%M:%S'),
+                        "dateEnd": reservation.room_reservation_booking_date_end.strftime('%Y-%m-%d'),
+                        "dateStart": reservation.room_reservation_booking_date_start.strftime('%Y-%m-%d'),
+                        "employee": f"{account.account_fName} {account.account_lName}",
+                        "guests": f"{guest.guest_fName} {guest.guest_lName}",
+                        "id": reservation.room_id,
+                        "reservationid": reservation.room_reservation_id,
+                        "status": reservation.room_reservation_status,
+                        "type": "room"
+                    })
+                    logger.debug("Processed room reservation ID: %d", reservation.room_reservation_id)
+                else:
+                    logger.warning("Missing guest or account details for room reservation ID: %d", reservation.room_reservation_id)
+            except Exception as e:
+                logger.error("Error processing room reservation ID %d: %s", reservation.room_reservation_id, str(e))
+
         # Process venue reservations
         for reservation in venue_reservations:
-            guest = GuestDetails.query.filter_by(guest_id=reservation.guest_id).first()
-            account = Account.query.filter_by(account_id=reservation.account_id).first()
-            
-            calendar_data.append({
-                "checkIn": reservation.venue_reservation_check_in_time.strftime('%H:%M:%S'),
-                "checkOut": reservation.venue_reservation_check_out_time.strftime('%H:%M:%S'),
-                "dateEnd": reservation.venue_reservation_booking_date_end.strftime('%Y-%m-%d'),
-                "dateStart": reservation.venue_reservation_booking_date_start.strftime('%Y-%m-%d'),
-                "employee": f"{account.account_fName} {account.account_lName}",
-                "guests": f"{guest.guest_fName} {guest.guest_lName}",
-                "id": reservation.venue_id,
-                "reservationid": reservation.venue_reservation_id,
-                "status": reservation.venue_reservation_status,
-                "type": "venue"
-            })
-        
+            try:
+                guest = GuestDetails.query.filter_by(guest_id=reservation.guest_id).first()
+                account = Account.query.filter_by(account_id=reservation.account_id).first()
+
+                if guest and account:
+                    calendar_data.append({
+                        "checkIn": reservation.venue_reservation_check_in_time.strftime('%H:%M:%S'),
+                        "checkOut": reservation.venue_reservation_check_out_time.strftime('%H:%M:%S'),
+                        "dateEnd": reservation.venue_reservation_booking_date_end.strftime('%Y-%m-%d'),
+                        "dateStart": reservation.venue_reservation_booking_date_start.strftime('%Y-%m-%d'),
+                        "employee": f"{account.account_fName} {account.account_lName}",
+                        "guests": f"{guest.guest_fName} {guest.guest_lName}",
+                        "id": reservation.venue_id,
+                        "reservationid": reservation.venue_reservation_id,
+                        "status": reservation.venue_reservation_status,
+                        "type": "venue"
+                    })
+                    logger.debug("Processed venue reservation ID: %d", reservation.venue_reservation_id)
+                else:
+                    logger.warning("Missing guest or account details for venue reservation ID: %d", reservation.venue_reservation_id)
+            except Exception as e:
+                logger.error("Error processing venue reservation ID %d: %s", reservation.venue_reservation_id, str(e))
+
+        logger.debug("Returning %d calendar data entries", len(calendar_data))
         return jsonify(calendar_data), 200
-        
+
     except Exception as e:
+        logger.error("Unexpected error in get_calendar_reservations: %s", str(e))
         return jsonify({"error": str(e)}), 500

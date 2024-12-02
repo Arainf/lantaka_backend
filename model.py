@@ -6,7 +6,7 @@ db = SQLAlchemy()
 
 class Account(db.Model):
     account_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    account_role = db.Column(db.Enum("Administrator", "Employee"))
+    account_role = db.Column(db.Enum("Administrator", "Employee", name="role_enum"))
     account_fName = db.Column(db.String(100))
     account_lName = db.Column(db.String(100))
     account_username = db.Column(db.String(100))
@@ -14,10 +14,10 @@ class Account(db.Model):
     account_password = db.Column(db.String(100))
     account_phone = db.Column(db.String(100))
     account_dob = db.Column(db.Date)
-    account_gender = db.Column(db.Enum("male", "female"))
+    account_gender = db.Column(db.Enum("male", "female", name="gender_enum"))
     account_created_at = db.Column(db.DateTime, default=datetime.datetime.now)
     account_updated_at = db.Column(db.DateTime, default=datetime.datetime.now)
-    account_status = db.Column(db.Enum("active", "inactive"))
+    account_status = db.Column(db.Enum("active", "inactive", name="status_enum" ))
     account_last_login = db.Column(db.String(100))
 
     def __init__(self, account_role, account_fName, account_lName, account_username, account_email, account_password, account_phone, account_dob, account_gender, account_status, account_last_login):
@@ -35,13 +35,13 @@ class Account(db.Model):
 
 class GuestDetails(db.Model):
     guest_id = db.Column(db.Integer, primary_key=True)
-    guest_type = db.Column(db.Enum("internal", "external"), nullable=False)
+    guest_type = db.Column(db.Enum("internal", "external", name="guest_type_enum"), nullable=False)
     guest_fName = db.Column(db.String(100))
     guest_lName = db.Column(db.String(100))
     guest_pop = db.Column(db.LargeBinary, nullable=True)
     guest_email = db.Column(db.String(100), unique=True)
     guest_phone = db.Column(db.String(100))
-    guest_gender = db.Column(db.Enum("male", "female"), nullable=False)
+    guest_gender = db.Column(db.Enum("male", "female", name="gender_enum"), nullable=False)
     guest_messenger_account = db.Column(db.String(100), nullable=False)
     guest_poi = db.Column(db.LargeBinary, nullable=True)
     guest_designation = db.Column(db.String(100), nullable=False)
@@ -67,7 +67,7 @@ class Room(db.Model):
     room_type_id = db.Column(db.Integer, db.ForeignKey('room_type.room_type_id'))
     room_type = db.relationship('RoomType', backref='rooms')
     room_name = db.Column(db.String(100), nullable=False)
-    room_status = db.Column(db.Enum("ready", "onMaintenance", "onCleaning"), nullable=False)
+    room_status = db.Column(db.Enum("ready", "onMaintenance", "onCleaning", name="room_status_enum"), nullable=False)
 
     def __init__(self, room_id, room_type_id, room_name, room_status):
         self.room_id = room_id
@@ -117,7 +117,7 @@ class Venue(db.Model):
     venue_id = db.Column(db.String(50), primary_key=True)
     venue_name = db.Column(db.String(100))
     venue_description = db.Column(db.String(1000), nullable=False)
-    venue_status = db.Column(db.Enum("ready", "onMaintenance", "onCleaning"), nullable=False)
+    venue_status = db.Column(db.Enum("ready", "onMaintenance", "onCleaning", name="venue_status_enum"), nullable=False)
     venue_pricing_internal = db.Column(db.Float, nullable=False)
     venue_pricing_external = db.Column(db.Float, nullable=False)
     venue_capacity = db.Column(db.Integer, nullable=False)
@@ -158,10 +158,10 @@ class VenueReservation(db.Model):
     venue_reservation_booking_date_end = db.Column(db.Date, nullable=False)
     venue_reservation_check_in_time = db.Column(db.Time, nullable=False)
     venue_reservation_check_out_time = db.Column(db.Time, nullable=False)
-    venue_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "done", "onCleaning"), nullable=False)
+    venue_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "done", "onCleaning",name="vreservation_status_enum"), nullable=False)
     venue_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
     venue_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
-    reservation_type = db.Column(db.Enum("venue","both"), nullable=True)
+    reservation_type = db.Column(db.Enum("venue","both", name="vreservation_type_enum"), nullable=True)
     
     # New reservation_time field
     reservation_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -197,10 +197,10 @@ class RoomReservation(db.Model):
     room_reservation_booking_date_end = db.Column(db.Date, nullable=False)
     room_reservation_check_in_time = db.Column(db.Time, nullable=False)
     room_reservation_check_out_time = db.Column(db.Time, nullable=False)
-    room_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "done", "onCleaning"), nullable=False)
+    room_reservation_status = db.Column(db.Enum("waiting", "ready", "onUse", "cancelled", "done", "onCleaning",name="rreservation_status_enum"), nullable=False)
     room_reservation_additional_notes = db.Column(db.String(1000), nullable=True)
     room_reservation_pop = db.Column(db.LargeBinary(length=2**32 - 1), nullable=True)
-    reservation_type = db.Column(db.Enum("room","both"), nullable=True)
+    reservation_type = db.Column(db.Enum("room","both", name="rreservation_type_enum"), nullable=True)
     
     # New reservation_time field
     reservation_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -227,7 +227,7 @@ class Notification(db.Model):
     notification_type = db.Column(db.String(50))
     notification_description = db.Column(db.String(1000), nullable=True)
     is_read = db.Column(db.Boolean, default=False) 
-    notification_role = db.Column(db.Enum("Administrator", "Employee"), nullable=True)
+    notification_role = db.Column(db.Enum("Administrator", "Employee", name="role_enum"), nullable=True)
 
     def __init__(self, notification_type, notification_description, is_read, notification_role):
         self.notification_type = notification_type

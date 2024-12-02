@@ -2,7 +2,20 @@ from fpdf import FPDF
 import textwrap
 
 class GuestFolioPDF(FPDF):
+    def __init__(self):
+        super().__init__()
+        self.logo_path = "DefaultAssets/header.png"
+
+    def set_logo(self, path):
+        self.logo_path = path
+
     def header(self):
+        if self.logo_path:
+            # Add logo to the left
+            self.image(self.logo_path, 10, 8, 33)  # Adjust position and size as needed
+        
+        # Move to the right for the title
+        self.set_xy(50, 10)
         self.set_font('Arial', 'B', 24)
         self.cell(0, 10, 'Lantaka Guest Folio', 0, 1, 'C')
         self.ln(10)
@@ -34,8 +47,9 @@ class GuestFolioPDF(FPDF):
                 self.cell(col_widths[i], 10, str(cell), 1, 0, 'L')
             self.ln()
 
-def generate_pdf(guest_data):
+def generate_pdf(guest_data, logo_path):
     pdf = GuestFolioPDF()
+    pdf.set_logo(logo_path)
     pdf.add_page()
 
     # Guest Details
@@ -64,7 +78,7 @@ def generate_pdf(guest_data):
         pdf.chapter_body(f"Account Title: Room Fee ({room['number']})")
 
         headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Misc. Charges', 'LT', 'ST', 'Dr.', 'Cr.', 'Bal.']
-        col_widths = [20, 20, 30, 20, 15, 15, 25, 15, 15, 15, 15, 20]
+        col_widths = [20, 20, 30, 25, 15, 15, 25, 15, 15, 15, 15, 20]
         data = [[charge[key] for key in ['date', 'reference_number', 'description', 'base_charge', 'vat', 'discount', 'misc_charges', 'lt', 'st', 'dr', 'cr', 'balance']] for charge in room['charges']]
         pdf.create_table(headers, data, col_widths)
 
@@ -78,7 +92,7 @@ def generate_pdf(guest_data):
         pdf.chapter_body("Account Title: Venue Fee")
 
         headers = ['Date', 'Ref. No.', 'Description', 'Base Charge', 'VAT', 'Disc.', 'Misc. Charges', 'LT', 'ST', 'Dr.', 'Cr.', 'Bal.']
-        col_widths = [20, 20, 30, 20, 15, 15, 25, 15, 15, 15, 15, 20]
+        col_widths = [20, 20, 30, 25, 15, 15, 25, 15, 15, 15, 15, 20]
         data = [[charge[key] for key in ['date', 'reference_number', 'description', 'base_charge', 'vat', 'discount', 'misc_charges', 'lt', 'st', 'dr', 'cr', 'balance']] for charge in venue['charges']]
         pdf.create_table(headers, data, col_widths)
 
