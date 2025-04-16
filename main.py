@@ -29,12 +29,12 @@ from definedFunctions.apiDashboardData import get_dashboard_data
 from definedFunctions.updateAccounts import update_account
 from defaultValues import rooms, roomTypes, venues
 from definedFunctions.scheduler import init_cleaning_scheduler
-
+import os
 
 app = Flask(__name__)
 CORS(app)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:lantaka@localhost/lantaka_database'
+# postgresql://postgres.neyybmkpbyfssjdmymjf:AdrianFabian04072004@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SUPABASE_DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 
@@ -45,8 +45,8 @@ app.config.update(
     MAIL_PORT=587,
     MAIL_USE_TLS=True,
     MAIL_USE_SSL=False,
-    MAIL_USERNAME='lantakahotel2024@gmail.com',
-    MAIL_PASSWORD='apve glqg cyux pqzj',
+    MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+    MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
     MAIL_DEFAULT_SENDER='lantakahotel2024@gmail.com',
 )
 
@@ -161,5 +161,5 @@ if __name__ == '__main__':
             print("Venues already exist, skipping insertion.")
     from definedFunctions.apiMailer import configure_mail
     configure_mail(app)
-    app.run(host='0.0.0.0', debug=True, port=5000)
+    app.run(host='0.0.0.0', debug=False, port=5000)
 

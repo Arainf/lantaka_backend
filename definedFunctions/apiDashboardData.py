@@ -274,10 +274,8 @@ def get_dashboard_data():
             RoomType.room_type_name,
             func.count(RoomReservation.room_reservation_id).label('bookings'),
             func.avg(
-                func.datediff(
-                    RoomReservation.room_reservation_booking_date_end,
-                    RoomReservation.room_reservation_booking_date_start
-                )
+                (cast(RoomReservation.room_reservation_booking_date_end, Date) - 
+                cast(RoomReservation.room_reservation_booking_date_start, Date))
             ).label('avg_duration')
         ).join(
             Room, Room.room_type_id == RoomType.room_type_id

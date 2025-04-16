@@ -80,6 +80,7 @@ def login():
 
 def simple_login():
     data = request.get_json()
+    email = data.get('email')
     username = data.get('username')
     password = data.get('password')
     
@@ -89,8 +90,9 @@ def simple_login():
 
     # Find the user by username
     user = Account.query.filter_by(account_username=username).first()
+    user_email = Account.query.filter_by(account_email=email).first()
 
-    if user and bcrypt.checkpw(password.encode('utf-8'), user.account_password.encode('utf-8')):
+    if user or user_email and bcrypt.checkpw(password.encode('utf-8'), user.account_password.encode('utf-8')):
         return jsonify({"success": True, "message": "Password verified"}), 200
     else:
         return jsonify({"success": False, "message": "Invalid username or password"}), 401
